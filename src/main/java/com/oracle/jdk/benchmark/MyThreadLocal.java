@@ -15,7 +15,11 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     private final int threadLocalHashCode = nextHashCode();
 //    private final Map<Entry, Object> storage = new IdentityHashMap<>(); //Write-only map
 //    private final Map<MyThread,Entry> storage = new WeakHashMap<>(); //Write-only map
-    private final EntryList storage = new EntryList(); //Write-only list
+    private final Entry root = new Entry(null, null, null, null); // storage root for Entries
+
+    public MyThreadLocal() {
+        root.right = root.left = root;
+    }
 
     /**
      * Returns the next hash code.
@@ -75,44 +79,21 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     private Entry remember(Object v) {
-        EntryList l = storage;
-        Entry e = new Entry(this, v);
+        Entry e, r = root;
 
         synchronized (this) {
-            l.add(e);
+            e = new Entry(this, v, r, r.right);
+            r.right = e;
         }
 
         return e;
     }
 
     private void forget(Entry e) {
-        EntryList l = storage;
+        Entry l = e.left;
+        Entry r = e.right;
 
         synchronized (this) {
-            l.remove(e);
-        }
-    }
-
-    private final static class EntryList {
-        private final Entry root;
-
-        public EntryList() {
-            root = new Entry(null, null);
-            root.right = root;
-        }
-
-        private void add(Entry e) {
-            Entry r = root;
-
-            e.right = r.right;
-            e.left = r;
-            r.right = e;
-        }
-
-        private void remove(Entry e) {
-            Entry l = e.left;
-            Entry r = e.right;
-
             l.right = r;
             r.left = l;
             e.left = e.right = null;
@@ -125,11 +106,13 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * The value associated with this ThreadLocal.
          */
         Object value;
-        Entry left, right;
+        volatile Entry left, right;
 
-        Entry(MyThreadLocal k, Object v) {
+        Entry(MyThreadLocal k, Object v, Entry l, Entry r) {
             this.key = k;
             value = v;
+            left = l;
+            right = r;
         }
     }
 
