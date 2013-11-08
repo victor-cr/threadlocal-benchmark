@@ -1,8 +1,6 @@
 package com.oracle.jdk.benchmark;
 
 import java.lang.ref.WeakReference;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -16,7 +14,8 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     private static final int HASH_INCREMENT = 0x61c88647;
     private final int threadLocalHashCode = nextHashCode();
 //    private final Map<Entry, Object> storage = new IdentityHashMap<>(); //Write-only map
-    private final Map<MyThread,Entry> storage = new WeakHashMap<>(); //Write-only map
+//    private final Map<MyThread,Entry> storage = new WeakHashMap<>(); //Write-only map
+    private final EntryList storage = new EntryList(); //Write-only list
 
     /**
      * Returns the next hash code.
@@ -76,21 +75,47 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     private Entry remember(Object v) {
+        EntryList l = storage;
         Entry e = new Entry(this, v);
-        MyThread t = MyThread.currentThread();
 
-        synchronized (storage) {
-            storage.put(t, e);
+        synchronized (this) {
+            l.add(e);
         }
 
         return e;
     }
 
-    private void forget() {
-        MyThread t = MyThread.currentThread();
+    private void forget(Entry e) {
+        EntryList l = storage;
 
-        synchronized (storage) {
-            storage.remove(t);
+        synchronized (this) {
+            l.remove(e);
+        }
+    }
+
+    private final static class EntryList {
+        private final Entry root;
+
+        public EntryList() {
+            root = new Entry(null, null);
+            root.right = root;
+        }
+
+        private void add(Entry e) {
+            Entry r = root;
+
+            e.right = r.right;
+            e.left = r;
+            r.right = e;
+        }
+
+        private void remove(Entry e) {
+            Entry l = e.left;
+            Entry r = e.right;
+
+            l.right = r;
+            r.left = l;
+            e.left = e.right = null;
         }
     }
 
@@ -100,6 +125,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * The value associated with this ThreadLocal.
          */
         Object value;
+        Entry left, right;
 
         Entry(MyThreadLocal k, Object v) {
             this.key = k;
@@ -284,7 +310,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
                  ref = tab[i = nextIndex(i, len)]) {
                 Entry e = ref.get();
                 if (e != null && e.key == key) {
-                    key.forget();
+                    key.forget(e);
                     expungeStaleEntry(i);
                     return;
                 }
@@ -502,6 +528,21 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
                 WeakReference<Entry> ref = tab[j];
                 if (ref != null && ref.get() == null)
                     expungeStaleEntry(j);
+            }
+        }
+
+        void clean() { // TODO: Optimize as bulk removal
+            WeakReference<Entry>[] tab = table;
+            int len = tab.length;
+
+            for (int i = 0; i < len; ++i) {
+                WeakReference<Entry> ref = tab[i];
+                if (ref != null) {
+                    Entry e = ref.get();
+                    if (e != null) {
+                        e.key.remove();
+                    }
+                }
             }
         }
     }

@@ -43,4 +43,15 @@ public class MyThread extends Thread {
     public static MyThread currentThread() {
         return (MyThread) Thread.currentThread();
     }
+
+    @Override
+    public synchronized void start() {
+        try {
+            super.start();
+        } finally {
+            if (threadLocals != null) {
+                threadLocals.clean();
+            }
+        }
+    }
 }
