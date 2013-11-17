@@ -1,4 +1,20 @@
-# Concurrent Linked Queue
+# Custom linked list + synchronization by "this"
+Benchmark                                               Mode Thr     Count  Sec         Mean   Mean error    Units
+c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt   1         5    1    20039.107      114.506   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt   1         5    1    20367.980      298.809   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt   1         5    1   117952.777      288.901   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt   1         5    1    19933.619       10.423   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt   1         5    1    89858.360      340.528   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt   1         5    1    84495.132      315.653   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt   1         5    1    41034.483      217.798   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt   1         5    1    47925.380      371.093   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt   1         5    1   103504.492      302.998   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt   1         5    1    85270.086      274.164   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt   1         5    1    88447.090      119.282   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt   1         5    1    80669.005      637.577   ops/ms
+
+
+# ConcurrentLinkedQueue
 Benchmark                                               Mode Thr     Count  Sec         Mean   Mean error    Units
 c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt   1         5    1    23106.329      184.038   ops/ms
 c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt   1         5    1    23761.508      739.186   ops/ms
