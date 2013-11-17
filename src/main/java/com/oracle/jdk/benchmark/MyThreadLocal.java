@@ -1,6 +1,7 @@
 package com.oracle.jdk.benchmark;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -15,11 +16,12 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     private final int threadLocalHashCode = nextHashCode();
 //    private final Map<Entry, Object> storage = new IdentityHashMap<>(); //Write-only map
 //    private final Map<MyThread,Entry> storage = new WeakHashMap<>(); //Write-only map
-    private final Entry root = new Entry(null, null, null, null); // storage root for Entries
+//    private final Entry root = new Entry(null, null, null, null); // storage root for Entries
+    private final ConcurrentLinkedQueue<Entry> storage = new ConcurrentLinkedQueue<>(); // storage root for Entries
 
-    public MyThreadLocal() {
-        root.right = root.left = root;
-    }
+//    public MyThreadLocal() {
+//        root.right = root.left = root;
+//    }
 
     /**
      * Returns the next hash code.
@@ -79,25 +81,32 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     private Entry remember(Object v) {
-        Entry e, r = root;
+//        Entry e, r = root;
+//
+//        synchronized (this) {
+//            e = new Entry(this, v, r, r.right);
+//            r.right = e;
+//        }
+//
+//        return e;
+        Entry e = new Entry(this, v);
 
-        synchronized (this) {
-            e = new Entry(this, v, r, r.right);
-            r.right = e;
-        }
+        storage.add(e);
 
         return e;
     }
 
     private void forget(Entry e) {
-        Entry l = e.left;
-        Entry r = e.right;
+        storage.remove(e);
 
-        synchronized (this) {
-            l.right = r;
-            r.left = l;
-            e.left = e.right = null;
-        }
+//        Entry l = e.left;
+//        Entry r = e.right;
+//
+//        synchronized (this) {
+//            l.right = r;
+//            r.left = l;
+//            e.left = e.right = null;
+//        }
     }
 
     static class Entry {
@@ -106,13 +115,14 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * The value associated with this ThreadLocal.
          */
         Object value;
-        volatile Entry left, right;
+//        volatile Entry left, right;
 
-        Entry(MyThreadLocal k, Object v, Entry l, Entry r) {
+//        Entry(MyThreadLocal k, Object v, Entry l, Entry r) {
+        Entry(MyThreadLocal k, Object v) {
             this.key = k;
             value = v;
-            left = l;
-            right = r;
+//            left = l;
+//            right = r;
         }
     }
 

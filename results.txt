@@ -1,0 +1,14 @@
+# Concurrent Linked Queue
+Benchmark                                               Mode Thr     Count  Sec         Mean   Mean error    Units
+c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt   1         5    1    23106.329      184.038   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt   1         5    1    23761.508      739.186   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt   1         5    1   118184.715       74.023   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt   1         5    1    27640.334       27.636   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt   1         5    1    90642.814      101.737   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt   1         5    1    86225.475      784.165   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt   1         5    1    40366.861      184.329   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt   1         5    1    47672.101      639.510   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt   1         5    1   103659.413      309.169   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt   1         5    1    83160.773      833.728   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt   1         5    1    89042.674      115.946   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt   1         5    1    82443.531      258.415   ops/ms
