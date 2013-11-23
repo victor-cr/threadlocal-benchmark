@@ -1,8 +1,8 @@
 package com.oracle.jdk.benchmark;
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * JavaDoc here
@@ -13,15 +13,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MyThreadLocal<T> extends ThreadLocal<T> {
     private static AtomicInteger nextHashCode = new AtomicInteger();
     private static final int HASH_INCREMENT = 0x61c88647;
+    private static final int LOCKS_COUNT = 15; // !!!! power 2 - 1
     private final int threadLocalHashCode = nextHashCode();
-//    private final Map<Entry, Object> storage = new IdentityHashMap<>(); //Write-only map
-//    private final Map<MyThread,Entry> storage = new WeakHashMap<>(); //Write-only map
-//    private final Entry root = new Entry(null, null, null, null); // storage root for Entries
-    private final ConcurrentLinkedQueue<Entry> storage = new ConcurrentLinkedQueue<>(); // storage root for Entries
+    private final Lock[] locks = new Lock[LOCKS_COUNT];
+    private final Node fallback = new Node();
 
-//    public MyThreadLocal() {
-//        root.right = root.left = root;
-//    }
+    public MyThreadLocal() {
+        for (int i = 0; i < LOCKS_COUNT; i++) {
+            locks[i] = new Lock();
+        }
+    }
 
     /**
      * Returns the next hash code.
@@ -80,49 +81,87 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
         throw new UnsupportedOperationException();
     }
 
-    private Entry remember(Object v) {
-//        Entry e, r = root;
-//
-//        synchronized (this) {
-//            e = new Entry(this, v, r, r.right);
-//            r.right = e;
-//        }
-//
-//        return e;
-        Entry e = new Entry(this, v);
-
-        storage.add(e);
-
+    private Entry link(Node r, Object v) {
+        Entry e = new Entry(this, v, r, r.next);
+        r.next.prev = e;
+        r.next = e;
         return e;
     }
 
-    private void forget(Entry e) {
-        storage.remove(e);
-
-//        Entry l = e.left;
-//        Entry r = e.right;
-//
-//        synchronized (this) {
-//            l.right = r;
-//            r.left = l;
-//            e.left = e.right = null;
-//        }
+    private void unlink(Node n) {
+        n.next.prev = n.prev;
+        n.prev.next = n.next;
+        n.next = null;
+        n.prev = null;
     }
 
-    static class Entry {
+    private Entry remember(Object v) {
+        MyThread t = MyThread.currentThread();
+        int start = t.hashCode() & LOCKS_COUNT;
+//        int end = (start + LOCKS_COUNT - 1) & LOCKS_COUNT;
+//
+//        for (int i = start; i != end; i = (i + 1) & LOCKS_COUNT) {
+//            Lock lock = locks[i];
+//
+//            if (lock.tryLock()) {
+//                try {
+//                    return link(lock.root, v);
+//                } finally {
+//                    lock.unlock();
+//                }
+//            }
+//        }
+//
+//        synchronized (fallback) {
+//            return link(fallback, v);
+//        }
+        Lock lock = locks[start];
+
+        lock.lock();
+
+        try {
+            return link(lock.root, v);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void forget(Entry e) {
+        MyThread t = MyThread.currentThread();
+        int start = t.hashCode() & LOCKS_COUNT;
+
+        Lock lock = locks[start];
+
+        lock.lock();
+
+        try {
+            unlink(e);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private static class Lock extends ReentrantLock {
+        private final Node root = new Node();
+    }
+
+    private static class Node {
+        volatile Node prev = this;
+        volatile Node next = this;
+    }
+
+    static class Entry extends Node {
         final MyThreadLocal key;
         /**
          * The value associated with this ThreadLocal.
          */
         Object value;
-//        volatile Entry left, right;
 
-//        Entry(MyThreadLocal k, Object v, Entry l, Entry r) {
-        Entry(MyThreadLocal k, Object v) {
+        Entry(MyThreadLocal k, Object v, Node p, Node n) {
             this.key = k;
             value = v;
-//            left = l;
-//            right = r;
+            prev = p;
+            next = n;
         }
     }
 

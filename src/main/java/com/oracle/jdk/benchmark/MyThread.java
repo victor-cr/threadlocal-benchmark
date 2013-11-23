@@ -44,14 +44,14 @@ public class MyThread extends Thread {
         return (MyThread) Thread.currentThread();
     }
 
-    @Override
-    public synchronized void start() {
-        try {
-            super.start();
-        } finally {
-            if (threadLocals != null) {
-                threadLocals.clean();
-            }
-        }
-    }
+//    @Override
+//    public synchronized void start() {
+//        try {
+//            super.start();
+//        } finally {
+//            if (threadLocals != null) {
+//                threadLocals.clean();
+//            }
+//        }
+//    }
 }

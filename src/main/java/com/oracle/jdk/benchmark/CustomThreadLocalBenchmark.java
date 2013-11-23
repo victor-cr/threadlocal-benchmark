@@ -25,121 +25,134 @@
 
 package com.oracle.jdk.benchmark;
 
+import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.GenerateMicroBenchmark;
-import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
+import java.util.concurrent.TimeUnit;
+
+@State(Scope.Benchmark)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class CustomThreadLocalBenchmark {
+    private static final Object INSTANCE = new Object();
 
-    @GenerateMicroBenchmark
-    public Object customColdGet(ColdCustomContext context) {
-        return context.threadLocal.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object customWarmGet(WarmCustomContext context) {
-        return context.threadLocal.get();
-    }
-
-    @GenerateMicroBenchmark
-    public void customColdSet(ColdCustomContext context) {
-        context.threadLocal.set(new Object());
-    }
-
-    @GenerateMicroBenchmark
-    public void customWarmSet(WarmCustomContext context) {
-        context.threadLocal.set(new Object());
-    }
-
-    @GenerateMicroBenchmark
-    public void customNoRemove(ColdCustomContext context) {
-        context.threadLocal.remove();
-    }
-
-    @GenerateMicroBenchmark
-    public void customRemove(WarmCustomContext context) {
-        context.threadLocal.remove();
-    }
-
-    @GenerateMicroBenchmark
-    public Object originalColdGet(ColdOriginalContext context) {
-        return context.threadLocal.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object originalWarmGet(WarmOriginalContext context) {
-        return context.threadLocal.get();
-    }
-
-    @GenerateMicroBenchmark
-    public void originalColdSet(ColdOriginalContext context) {
-        context.threadLocal.set(new Object());
-    }
-
-    @GenerateMicroBenchmark
-    public void originalWarmSet(WarmOriginalContext context) {
-        context.threadLocal.set(new Object());
-    }
-
-    @GenerateMicroBenchmark
-    public void originalNoRemove(ColdOriginalContext context) {
-        context.threadLocal.remove();
-    }
-
-    @GenerateMicroBenchmark
-    public void originalRemove(WarmOriginalContext context) {
-        context.threadLocal.remove();
-    }
-
-    public abstract static class CustomContext {
-        protected final MyThreadLocal<Object> threadLocal = new MyThreadLocal<Object>(){
-            @Override
-            protected Object initialValue() {
-                return new Object();
-            }
-        };
-    }
-
-    @State(Scope.Benchmark)
-    public static class ColdCustomContext extends CustomContext {
-        @Setup(Level.Invocation)
-        public void setup() {
-            threadLocal.remove();
+    private final MyThreadLocal<Object> custom = new MyThreadLocal<Object>(){
+        @Override
+        protected Object initialValue() {
+            return INSTANCE;
         }
-    }
+    };
 
-    @State(Scope.Benchmark)
-    public static class WarmCustomContext extends CustomContext {
-        @Setup(Level.Invocation)
-        public void setup() {
-            threadLocal.get();
+    private final ThreadLocal<Object> original = new ThreadLocal<Object>(){
+        @Override
+        protected Object initialValue() {
+            return INSTANCE;
         }
+    };
+
+    @GenerateMicroBenchmark
+    public Object customGet() {
+        return custom.get();
     }
 
-    public abstract static class OriginalContext {
-        protected final ThreadLocal<Object> threadLocal = new ThreadLocal<Object>(){
-            @Override
-            protected Object initialValue() {
-                return new Object();
-            }
-        };
+    @GenerateMicroBenchmark
+    public Object customRemoveGet() {
+        custom.remove();
+        return custom.get();
     }
 
-    @State(Scope.Benchmark)
-    public static class ColdOriginalContext extends OriginalContext {
-        @Setup(Level.Invocation)
-        public void setup() {
-            threadLocal.remove();
-        }
+    @GenerateMicroBenchmark
+    public Object customGetGet() {
+        custom.get();
+        return custom.get();
     }
 
-    @State(Scope.Benchmark)
-    public static class WarmOriginalContext extends OriginalContext {
-        @Setup(Level.Invocation)
-        public void setup() {
-            threadLocal.get();
-        }
+    @GenerateMicroBenchmark
+    public void customSet() {
+        custom.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void customRemoveSet() {
+        custom.remove();
+        custom.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void customGetSet() {
+        custom.get();
+        custom.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void customRemove() {
+        custom.remove();
+    }
+
+    @GenerateMicroBenchmark
+    public void customGetRemove() {
+        custom.get();
+        custom.remove();
+    }
+
+    @GenerateMicroBenchmark
+    public void customRemoveRemove() {
+        custom.remove();
+        custom.remove();
+    }
+
+    @GenerateMicroBenchmark
+    public Object originalGet() {
+        return original.get();
+    }
+
+    @GenerateMicroBenchmark
+    public Object originalRemoveGet() {
+        original.remove();
+        return original.get();
+    }
+
+    @GenerateMicroBenchmark
+    public Object originalGetGet() {
+        original.get();
+        return original.get();
+    }
+
+    @GenerateMicroBenchmark
+    public void originalSet() {
+        original.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void originalRemoveSet() {
+        original.remove();
+        original.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void originalGetSet() {
+        original.get();
+        original.set(INSTANCE);
+    }
+
+    @GenerateMicroBenchmark
+    public void originalRemove() {
+        original.remove();
+    }
+
+    @GenerateMicroBenchmark
+    public void originalGetRemove() {
+        original.get();
+        original.remove();
+    }
+
+    @GenerateMicroBenchmark
+    public void originalRemoveRemove() {
+        original.remove();
+        original.remove();
     }
 }

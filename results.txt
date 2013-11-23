@@ -1,30 +1,76 @@
 # Custom linked list + synchronization by "this"
+# -i 5 -t 50 -f 1 -wi 5
 Benchmark                                               Mode Thr     Count  Sec         Mean   Mean error    Units
-c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt   1         5    1    20039.107      114.506   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt   1         5    1    20367.980      298.809   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt   1         5    1   117952.777      288.901   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt   1         5    1    19933.619       10.423   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt   1         5    1    89858.360      340.528   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt   1         5    1    84495.132      315.653   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt   1         5    1    41034.483      217.798   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt   1         5    1    47925.380      371.093   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt   1         5    1   103504.492      302.998   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt   1         5    1    85270.086      274.164   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt   1         5    1    88447.090      119.282   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt   1         5    1    80669.005      637.577   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt  50         5    1  1031861.773    16147.312   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt  50         5    1  1102938.886    16681.638   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt  50         5    1  5549172.765    36187.835   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt  50         5    1   944859.412    13313.141   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt  50         5    1  4338561.876    13469.196   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt  50         5    1  3482724.698   474293.482   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt  50         5    1  1531833.389   192869.299   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt  50         5    1  2189814.270    33824.335   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt  50         5    1  5080322.871    36378.873   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt  50         5    1  3969912.530    43918.960   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt  50         5    1  3920222.008    15346.575   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt  50         5    1  3640421.571   472554.039   ops/ms
 
 
 # ConcurrentLinkedQueue
+# -i 5 -t 50 -f 1 -wi 5
 Benchmark                                               Mode Thr     Count  Sec         Mean   Mean error    Units
-c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt   1         5    1    23106.329      184.038   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt   1         5    1    23761.508      739.186   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt   1         5    1   118184.715       74.023   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt   1         5    1    27640.334       27.636   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt   1         5    1    90642.814      101.737   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt   1         5    1    86225.475      784.165   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt   1         5    1    40366.861      184.329   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt   1         5    1    47672.101      639.510   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt   1         5    1   103659.413      309.169   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt   1         5    1    83160.773      833.728   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt   1         5    1    89042.674      115.946   ops/ms
-c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt   1         5    1    82443.531      258.415   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdGet       thrpt  50         5    1   668060.634    31703.741   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customColdSet       thrpt  50         5    1   661238.613    62755.923   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customNoRemove      thrpt  50         5    1  5151803.495    55290.363   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customRemove        thrpt  50         5    1  1200109.932    32971.173   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmGet       thrpt  50         5    1  4364849.930    20943.659   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.customWarmSet       thrpt  50         5    1  3756801.004   412301.534   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdGet     thrpt  50         5    1  1528940.983   241600.060   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalColdSet     thrpt  50         5    1  2166948.349   144088.864   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalNoRemove    thrpt  50         5    1  4999050.826    33964.721   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove      thrpt  50         5    1  3942935.221    29481.384   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmGet     thrpt  50         5    1  3918442.184    20544.346   ops/ms
+c.o.j.b.CustomThreadLocalBenchmark.originalWarmSet     thrpt  50         5    1  3582492.810   732899.456   ops/ms
+
+# Incorrect code! Volatile w/o synchronization
+# -i 5 -t 5 -f 1 -wi 5
+Benchmark                                                   Mode Thr     Count  Sec         Mean   Mean error    Units
+c.o.j.b.CustomThreadLocalBenchmark.customGet                avgt   5         5    1        5.488        0.234    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetGet             avgt   5         5    1        5.616        0.548    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetRemove          avgt   5         5    1      542.370       20.102    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetSet             avgt   5         5    1        5.531        0.523    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemove             avgt   5         5    1        1.459        0.080    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveGet          avgt   5         5    1      500.617       38.918    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveRemove       avgt   5         5    1        1.474        0.153    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveSet          avgt   5         5    1      545.048       38.358    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customSet                avgt   5         5    1        4.969        0.615    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGet              avgt   5         5    1        5.772        0.688    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetGet           avgt   5         5    1        9.040        1.154    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetRemove        avgt   5         5    1       47.934        1.953    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetSet           avgt   5         5    1       11.361        1.113    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove           avgt   5         5    1        2.837        0.447    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveGet        avgt   5         5    1       61.974        2.314    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveRemove     avgt   5         5    1        3.567        0.584    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveSet        avgt   5         5    1       54.634        2.526    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalSet              avgt   5         5    1        5.090        0.385    ns/op
+
+# Volatile with ReentrantLock
+# -i 5 -t 5 -f 1 -wi 5
+Benchmark                                                   Mode Thr     Count  Sec         Mean   Mean error    Units
+c.o.j.b.CustomThreadLocalBenchmark.customGet                avgt   5         5    1        5.456        0.484    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetGet             avgt   5         5    1        5.552        1.035    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetRemove          avgt   5         5    1      671.422       22.121    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetSet             avgt   5         5    1        4.977        0.441    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemove             avgt   5         5    1        1.482        0.150    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveGet          avgt   5         5    1      423.917       11.303    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveRemove       avgt   5         5    1        1.475        0.140    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveSet          avgt   5         5    1      460.562       26.148    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customSet                avgt   5         5    1        4.871        0.674    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGet              avgt   5         5    1        4.905        0.459    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetGet           avgt   5         5    1        6.625        0.729    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetRemove        avgt   5         5    1       67.497        5.289    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetSet           avgt   5         5    1       10.775        0.648    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove           avgt   5         5    1        2.768        0.376    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveGet        avgt   5         5    1       58.765        2.293    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveRemove     avgt   5         5    1        3.557        0.327    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveSet        avgt   5         5    1       58.942        2.172    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalSet              avgt   5         5    1        4.552        0.347    ns/op
