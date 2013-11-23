@@ -13,10 +13,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MyThreadLocal<T> extends ThreadLocal<T> {
     private static AtomicInteger nextHashCode = new AtomicInteger();
     private static final int HASH_INCREMENT = 0x61c88647;
-    private static final int LOCKS_COUNT = 15; // !!!! power 2 - 1
+    private static final int LOCKS_COUNT = 15; // !!!! ^2 - 1
     private final int threadLocalHashCode = nextHashCode();
     private final Lock[] locks = new Lock[LOCKS_COUNT];
-    private final Node fallback = new Node();
 
     public MyThreadLocal() {
         for (int i = 0; i < LOCKS_COUNT; i++) {
@@ -115,14 +114,8 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
 //        synchronized (fallback) {
 //            return link(fallback, v);
 //        }
-        Lock lock = locks[start];
-
-        lock.lock();
-
-        try {
-            return link(lock.root, v);
-        } finally {
-            lock.unlock();
+        synchronized (locks[start]) {
+            return link(locks[start].root, v);
         }
     }
 
@@ -130,14 +123,8 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
         MyThread t = MyThread.currentThread();
         int start = t.hashCode() & LOCKS_COUNT;
 
-        Lock lock = locks[start];
-
-        lock.lock();
-
-        try {
+        synchronized (locks[start]) {
             unlink(e);
-        } finally {
-            lock.unlock();
         }
     }
 
