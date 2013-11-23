@@ -118,3 +118,25 @@ c.o.j.b.CustomThreadLocalBenchmark.originalRemoveGet        avgt   5         5  
 c.o.j.b.CustomThreadLocalBenchmark.originalRemoveRemove     avgt   5         5    1        3.523        0.341    ns/op
 c.o.j.b.CustomThreadLocalBenchmark.originalRemoveSet        avgt   5         5    1       62.799        5.201    ns/op
 c.o.j.b.CustomThreadLocalBenchmark.originalSet              avgt   5         5    1        4.895        0.092    ns/op
+
+# Non volatile with single synchronization monitor
+# -i 5 -t 5 -f 1 -wi 5
+Benchmark                                                   Mode Thr     Count  Sec         Mean   Mean error    Units
+c.o.j.b.CustomThreadLocalBenchmark.customGet                avgt   5         5    1        5.579        0.715    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetGet             avgt   5         5    1        5.504        0.969    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetRemove          avgt   5         5    1      637.258        3.184    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customGetSet             avgt   5         5    1        8.933        2.198    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemove             avgt   5         5    1        1.458        0.172    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveGet          avgt   5         5    1      593.326       16.264    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveRemove       avgt   5         5    1        1.458        0.095    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customRemoveSet          avgt   5         5    1      526.633       50.344    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.customSet                avgt   5         5    1        5.181        1.207    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGet              avgt   5         5    1        5.778        0.485    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetGet           avgt   5         5    1        8.727        1.389    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetRemove        avgt   5         5    1       70.583        1.606    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalGetSet           avgt   5         5    1       10.485        1.406    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemove           avgt   5         5    1        2.679        0.054    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveGet        avgt   5         5    1       64.293        2.181    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveRemove     avgt   5         5    1        3.611        0.634    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalRemoveSet        avgt   5         5    1       55.740        2.324    ns/op
+c.o.j.b.CustomThreadLocalBenchmark.originalSet              avgt   5         5    1        5.068        0.553    ns/op

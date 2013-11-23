@@ -14,13 +14,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     private static final int HASH_INCREMENT = 0x61c88647;
     private static final int LOCKS_COUNT = 15; // !!!! ^2 - 1
     private final int threadLocalHashCode = nextHashCode();
-    private final Node[] locks = new Node[LOCKS_COUNT];
-
-    public MyThreadLocal() {
-        for (int i = 0; i < LOCKS_COUNT; i++) {
-            locks[i] = new Node();
-        }
-    }
+    private final Node lock = new Node();
 
     /**
      * Returns the next hash code.
@@ -94,35 +88,13 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     private Entry remember(Object v) {
-        MyThread t = MyThread.currentThread();
-        int start = t.hashCode() & LOCKS_COUNT;
-//        int end = (start + LOCKS_COUNT - 1) & LOCKS_COUNT;
-//
-//        for (int i = start; i != end; i = (i + 1) & LOCKS_COUNT) {
-//            Lock lock = locks[i];
-//
-//            if (lock.tryLock()) {
-//                try {
-//                    return link(lock.root, v);
-//                } finally {
-//                    lock.unlock();
-//                }
-//            }
-//        }
-//
-//        synchronized (fallback) {
-//            return link(fallback, v);
-//        }
-        synchronized (locks[start]) {
-            return link(locks[start], v);
+        synchronized (lock) {
+            return link(lock, v);
         }
     }
 
     private void forget(Entry e) {
-        MyThread t = MyThread.currentThread();
-        int start = t.hashCode() & LOCKS_COUNT;
-
-        synchronized (locks[start]) {
+        synchronized (lock) {
             unlink(e);
         }
     }
@@ -257,24 +229,24 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * @param ref the entry at table[i]
          * @return the entry associated with key, or null if no such
          */
-        private Entry getEntryAfterMiss(MyThreadLocal key, int i, WeakReference<Entry> ref) {
-            WeakReference<Entry>[] tab = table;
-            int len = tab.length;
-
-            while (ref != null) {
-                Entry e = ref.get();
-
-                if (e == null) {
-                    expungeStaleEntry(i);
-                } else if (e.key == key) {
-                    return e;
-                } else {
-                    i = nextIndex(i, len);
-                }
-                ref = tab[i];
-            }
-            return null;
-        }
+//        private Entry getEntryAfterMiss(MyThreadLocal key, int i, WeakReference<Entry> ref) {
+//            WeakReference<Entry>[] tab = table;
+//            int len = tab.length;
+//
+//            while (ref != null) {
+//                Entry e = ref.get();
+//
+//                if (e == null) {
+//                    expungeStaleEntry(i);
+//                } else if (e.key == key) {
+//                    return e;
+//                } else {
+//                    i = nextIndex(i, len);
+//                }
+//                ref = tab[i];
+//            }
+//            return null;
+//        }
 
         /**
          * Set the value associated with key.
