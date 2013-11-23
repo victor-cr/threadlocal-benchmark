@@ -2,7 +2,6 @@ package com.oracle.jdk.benchmark;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * JavaDoc here
@@ -15,11 +14,11 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     private static final int HASH_INCREMENT = 0x61c88647;
     private static final int LOCKS_COUNT = 15; // !!!! ^2 - 1
     private final int threadLocalHashCode = nextHashCode();
-    private final Lock[] locks = new Lock[LOCKS_COUNT];
+    private final Node[] locks = new Node[LOCKS_COUNT];
 
     public MyThreadLocal() {
         for (int i = 0; i < LOCKS_COUNT; i++) {
-            locks[i] = new Lock();
+            locks[i] = new Node();
         }
     }
 
@@ -115,7 +114,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
 //            return link(fallback, v);
 //        }
         synchronized (locks[start]) {
-            return link(locks[start].root, v);
+            return link(locks[start], v);
         }
     }
 
@@ -128,13 +127,13 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
         }
     }
 
-    private static class Lock extends ReentrantLock {
-        private final Node root = new Node();
-    }
+//    private static class Lock extends ReentrantLock {
+//        private final Node root = new Node();
+//    }
 
     private static class Node {
-        volatile Node prev = this;
-        volatile Node next = this;
+        protected Node prev = this;
+        protected Node next = this;
     }
 
     static class Entry extends Node {
@@ -146,9 +145,9 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
 
         Entry(MyThreadLocal k, Object v, Node p, Node n) {
             this.key = k;
-            value = v;
-            prev = p;
-            next = n;
+            this.value = v;
+            this.prev = p;
+            this.next = n;
         }
     }
 
