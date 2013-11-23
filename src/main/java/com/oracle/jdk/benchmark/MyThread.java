@@ -7,7 +7,7 @@ package com.oracle.jdk.benchmark;
  * @since 27.10.13 6:31
  */
 public class MyThread extends Thread {
-    MyThreadLocal.ThreadLocalMap threadLocals;
+    MyThreadLocal.ThreadLocalMap myThreadLocals;
 
     public MyThread() {
     }

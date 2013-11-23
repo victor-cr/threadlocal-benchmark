@@ -9,18 +9,23 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Victor Polischuk
  * @since 27.10.13 6:30
  */
-public class MyThreadLocal<T> extends ThreadLocal<T> {
+public class MyThreadLocal<T> {
     private static AtomicInteger nextHashCode = new AtomicInteger();
     private static final int HASH_INCREMENT = 0x61c88647;
-    private static final int LOCKS_COUNT = 15; // !!!! ^2 - 1
+    private static final int LOCKS_COUNT = 15; // !!!! ^2
     private final int threadLocalHashCode = nextHashCode();
-    private final Node lock = new Node();
+    private int size = 0;
+    volatile Entry[] storage = new Entry[16];
 
     /**
      * Returns the next hash code.
      */
     private static int nextHashCode() {
         return nextHashCode.getAndAdd(HASH_INCREMENT);
+    }
+
+    protected T initialValue() {
+        return null;
     }
 
     public T get() {
@@ -62,89 +67,98 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     ThreadLocalMap getMap(MyThread t) {
-        return t.threadLocals;
+        return t.myThreadLocals;
     }
 
     void createMap(MyThread t, T firstValue) {
-        t.threadLocals = new ThreadLocalMap(this, firstValue);
+        t.myThreadLocals = new ThreadLocalMap(this, firstValue);
     }
 
     T childValue(T parentValue) {
         throw new UnsupportedOperationException();
     }
 
-    private Entry link(Node r, Object v) {
-        Entry e = new Entry(this, v, r, r.next);
-        r.next.prev = e;
-        r.next = e;
-        return e;
+    synchronized
+    WeakEntry remember(Object v) {
+//        return new WeakEntry(null);
+        Entry[] tab = storage;
+        int len = tab.length;
+
+        int mask = len - 1;
+        int i = (int) (MyThread.currentThread().getId() & mask);
+        Entry e;
+
+        while (tab[i] != null) {
+            i = (i + 1) & mask;
+        }
+
+        tab[i] = (e = new Entry(this, v, i));
+
+        if (++size == len) {
+            storage = new Entry[len << 1];
+            System.arraycopy(tab, 0, storage, 0, len);
+        }
+
+        return new WeakEntry(e);
     }
 
-    private void unlink(Node n) {
-        n.next.prev = n.prev;
-        n.prev.next = n.next;
-        n.next = null;
-        n.prev = null;
-    }
-
-    private Entry remember(Object v) {
-//        synchronized (lock) {
-            return link(lock, v);
-//        }
-    }
-
+    synchronized
     private void forget(Entry e) {
-//        synchronized (lock) {
-            unlink(e);
- //       }
+        storage[e.i] = null;
+        size--;
     }
 
-//    private static class Lock extends ReentrantLock {
-//        private final Node root = new Node();
-//    }
-
-    private static class Node {
-        protected Node prev = this;
-        protected Node next = this;
+    private int index(int len) {
+        return threadLocalHashCode & (len - 1);
     }
 
-    static class Entry extends Node {
+    static class Entry {
+        final int i;
         final MyThreadLocal key;
         /**
          * The value associated with this ThreadLocal.
          */
         Object value;
 
-        Entry(MyThreadLocal k, Object v, Node p, Node n) {
+        Entry(MyThreadLocal k, Object v, int i) {
+            this.i = i;
             this.key = k;
             this.value = v;
-            this.prev = p;
-            this.next = n;
+        }
+    }
+
+    private static class WeakEntry extends WeakReference<Entry> {
+        private WeakEntry(Entry referent) {
+            super(referent);
         }
     }
 
     static class ThreadLocalMap {
         private static final int INITIAL_CAPACITY = 16;
-        private WeakReference<Entry>[] table;
+        private WeakEntry[] table;
         private int size = 0;
         private int threshold; // Default to 0
+
+        private static int nextIndex(int i, int len) {
+            return (i + 1) & (len - 1);
+            //            return ((i + 1 < len) ? i + 1 : 0);
+            //            return ((++i < len) ? i : 0);
+        }
+
+        private static int prevIndex(int i, int len) {
+            return (i - 1) & (len - 1);
+            //            return ((i - 1 >= 0) ? i - 1 : len - 1);
+            //            return ((--i >= 0) ? i : len - 1);
+        }
 
         private void setThreshold(int len) {
             threshold = len * 2 / 3;
         }
 
-        private static int nextIndex(int i, int len) {
-            return ((++i < len) ? i : 0);
-        }
-
-        private static int prevIndex(int i, int len) {
-            return ((--i >= 0) ? i : len - 1);
-        }
-
         ThreadLocalMap(MyThreadLocal firstKey, Object firstValue) {
-            table = new WeakReference[INITIAL_CAPACITY];
-            int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
-            table[i] = new WeakReference<>(firstKey.remember(firstValue));
+            table = new WeakEntry[INITIAL_CAPACITY];
+            int i = firstKey.index(INITIAL_CAPACITY);
+            table[i] = firstKey.remember(firstValue);
             size = 1;
             setThreshold(INITIAL_CAPACITY);
         }
@@ -156,23 +170,22 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * @param parentMap the map associated with parent thread.
          */
         private ThreadLocalMap(ThreadLocalMap parentMap) {
-            WeakReference<Entry>[] parentTable = parentMap.table;
+            WeakEntry[] parentTable = parentMap.table;
             int len = parentTable.length;
             setThreshold(len);
-            table = new WeakReference[len];
+            table = new WeakEntry[len];
 
             for (int j = 0; j < len; j++) {
                 Entry e;
-                WeakReference<Entry> ref = parentTable[j];
+                WeakEntry ref = parentTable[j];
                 if (ref != null && (e = ref.get()) != null) {
                     MyThreadLocal key = e.key;
                     if (key != null) {
                         Object value = key.childValue(e.value);
-                        e = key.remember(value);
-                        int h = key.threadLocalHashCode & (len - 1);
+                        int h = key.index(len);
                         while (table[h] != null)
                             h = nextIndex(h, len);
-                        table[h] = new WeakReference<>(e);
+                        table[h] = key.remember(value);
                         size++;
                     }
                 }
@@ -190,63 +203,26 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * @return the entry associated with key, or null if no such
          */
         private Entry getEntry(MyThreadLocal key) {
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len - 1);
-            WeakReference<Entry> ref = tab[i];
+            int i = key.index(len);
 
-            while (ref != null) {
+            for (WeakEntry ref = tab[i];
+                 ref != null;
+                 ref = tab[i = nextIndex(i, len)]) {
                 Entry e = ref.get();
+
+                if (e != null && e.key == key) {
+                    return e;
+                }
 
                 if (e == null) {
                     expungeStaleEntry(i);
-                } else if (e.key == key) {
-                    return e;
-                } else {
-                    i = nextIndex(i, len);
                 }
-                ref = tab[i];
             }
+
             return null;
         }
-
-//        private Entry getEntry(MyThreadLocal key) {
-//            int i = key.threadLocalHashCode & (table.length - 1);
-//            Entry e;
-//            WeakReference<Entry> ref = table[i];
-//            if (ref != null && (e = ref.get()) != null && e.key == key)
-//                return e;
-//            else
-//                return getEntryAfterMiss(key, i, ref);
-//        }
-
-        /**
-         * Version of getEntry method for use when key is not found in
-         * its direct hash slot.
-         *
-         * @param key the thread local object
-         * @param i   the table index for key's hash code
-         * @param ref the entry at table[i]
-         * @return the entry associated with key, or null if no such
-         */
-//        private Entry getEntryAfterMiss(MyThreadLocal key, int i, WeakReference<Entry> ref) {
-//            WeakReference<Entry>[] tab = table;
-//            int len = tab.length;
-//
-//            while (ref != null) {
-//                Entry e = ref.get();
-//
-//                if (e == null) {
-//                    expungeStaleEntry(i);
-//                } else if (e.key == key) {
-//                    return e;
-//                } else {
-//                    i = nextIndex(i, len);
-//                }
-//                ref = tab[i];
-//            }
-//            return null;
-//        }
 
         /**
          * Set the value associated with key.
@@ -261,27 +237,27 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
             // it is to replace existing ones, in which case, a fast
             // path would fail more often than not.
 
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len - 1);
+            int i = key.index(len);
 
-            for (WeakReference<Entry> ref = tab[i];
+            for (WeakEntry ref = tab[i];
                  ref != null;
                  ref = tab[i = nextIndex(i, len)]) {
-                Entry k = ref.get();
+                Entry e = ref.get();
 
-                if (k == null) {
-                    replaceStaleEntry(key, value, i);
+                if (e != null && e.key == key) {
+                    e.value = value;
                     return;
                 }
 
-                if (k.key == key) {
-                    k.value = value;
+                if (e == null) {
+                    replaceStaleEntry(key, value, i);
                     return;
                 }
             }
 
-            tab[i] = new WeakReference<>(key.remember(value));
+            tab[i] = key.remember(value);
             int sz = ++size;
             if (!cleanSomeSlots(i, sz) && sz >= threshold)
                 rehash();
@@ -291,15 +267,16 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * Remove the entry for key.
          */
         private void remove(MyThreadLocal key) {
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
-            int i = key.threadLocalHashCode & (len - 1);
+            int i = key.index(len);
 
-            for (WeakReference<Entry> ref = tab[i];
+            for (WeakEntry ref = tab[i];
                  ref != null;
                  ref = tab[i = nextIndex(i, len)]) {
                 Entry e = ref.get();
                 if (e != null && e.key == key) {
+                    ref.clear();
                     key.forget(e);
                     expungeStaleEntry(i);
                     return;
@@ -324,10 +301,10 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          */
         private void replaceStaleEntry(MyThreadLocal key, Object value,
                                        int staleSlot) {
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
             Entry e;
-            WeakReference<Entry> ref;
+            WeakEntry ref;
 
             // Back up to check for prior stale entry in current run.
             // We clean out whole runs at a time to avoid continual
@@ -375,7 +352,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
             }
 
             // If key not found, put new entry in stale slot
-            tab[staleSlot] = new WeakReference<>(key.remember(value));
+            tab[staleSlot] = key.remember(value);
 
             // If there are any other stale entries in run, expunge them
             if (slotToExpunge != staleSlot)
@@ -394,7 +371,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          *         for expunging).
          */
         private int expungeStaleEntry(int staleSlot) {
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
 
             // expunge entry at staleSlot
@@ -403,7 +380,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
 
             // Rehash until we encounter null
             Entry e;
-            WeakReference<Entry> ref;
+            WeakEntry ref;
             int i;
             for (i = nextIndex(staleSlot, len);
                  (ref = tab[i]) != null;
@@ -413,7 +390,7 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
                     tab[i] = null;
                     size--;
                 } else {
-                    int h = e.key.threadLocalHashCode & (len - 1);
+                    int h = e.key.index(len);
                     if (h != i) {
                         tab[i] = null;
 
@@ -452,11 +429,11 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          */
         private boolean cleanSomeSlots(int i, int n) {
             boolean removed = false;
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
             do {
                 i = nextIndex(i, len);
-                WeakReference<Entry> ref = tab[i];
+                WeakEntry ref = tab[i];
                 if (ref != null && ref.get() == null) {
                     n = len;
                     removed = true;
@@ -483,18 +460,18 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * Double the capacity of the table.
          */
         private void resize() {
-            WeakReference<Entry>[] oldTab = table;
+            WeakEntry[] oldTab = table;
             int oldLen = oldTab.length;
             int newLen = oldLen * 2;
-            WeakReference<Entry>[] newTab = new WeakReference[newLen];
+            WeakEntry[] newTab = new WeakEntry[newLen];
             int count = 0;
 
             for (int j = 0; j < oldLen; ++j) {
-                WeakReference<Entry> ref = oldTab[j];
+                WeakEntry ref = oldTab[j];
                 if (ref != null) {
                     Entry e = ref.get();
                     if (e != null) {
-                        int h = e.key.threadLocalHashCode & (newLen - 1);
+                        int h = e.key.index(newLen);
                         while (newTab[h] != null)
                             h = nextIndex(h, newLen);
                         newTab[h] = ref;
@@ -512,27 +489,12 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
          * Expunge all stale entries in the table.
          */
         private void expungeStaleEntries() {
-            WeakReference<Entry>[] tab = table;
+            WeakEntry[] tab = table;
             int len = tab.length;
             for (int j = 0; j < len; j++) {
-                WeakReference<Entry> ref = tab[j];
+                WeakEntry ref = tab[j];
                 if (ref != null && ref.get() == null)
                     expungeStaleEntry(j);
-            }
-        }
-
-        void clean() { // TODO: Optimize as bulk removal
-            WeakReference<Entry>[] tab = table;
-            int len = tab.length;
-
-            for (int i = 0; i < len; ++i) {
-                WeakReference<Entry> ref = tab[i];
-                if (ref != null) {
-                    Entry e = ref.get();
-                    if (e != null) {
-                        e.key.remove();
-                    }
-                }
             }
         }
     }
