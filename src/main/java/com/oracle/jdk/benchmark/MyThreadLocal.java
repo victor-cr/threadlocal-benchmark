@@ -514,5 +514,24 @@ public class MyThreadLocal<T> {
                     expungeStaleEntry(j);
             }
         }
+
+        void cleanup(int index) {
+            WeakEntry[] tab = table;
+            int len = tab.length;
+
+            for (int j = 0; j < len; j++) {
+                Entry e;
+                WeakEntry ref = tab[j];
+
+                if (ref != null && (e = ref.get()) != null) {
+                    e.key.forget(e);
+                    ref.clear();
+                }
+
+                tab[j] = null;
+            }
+
+            tab = null;
+        }
     }
 }

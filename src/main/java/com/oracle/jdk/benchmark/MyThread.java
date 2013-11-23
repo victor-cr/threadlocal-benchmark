@@ -52,6 +52,7 @@ public class MyThread extends Thread {
 
     private static synchronized void retireIndex(MyThread thread) {
         numerator.push(thread.index);
+        thread.index = 0;
     }
 
     @Override
@@ -60,7 +61,11 @@ public class MyThread extends Thread {
 
         try {
             super.start();
-        } finally {
+        } finally { //FIXME: Finally block may be ignored in some corner cases. Probably, it is better to schedule the code at GC event.
+            if (myThreadLocals != null) {
+                myThreadLocals.cleanup(index);
+            }
+
             retireIndex(this);
         }
     }
