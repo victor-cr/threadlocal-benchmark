@@ -88,15 +88,15 @@ public class MyThreadLocal<T> extends ThreadLocal<T> {
     }
 
     private Entry remember(Object v) {
-        synchronized (lock) {
+//        synchronized (lock) {
             return link(lock, v);
-        }
+//        }
     }
 
     private void forget(Entry e) {
-        synchronized (lock) {
+//        synchronized (lock) {
             unlink(e);
-        }
+ //       }
     }
 
 //    private static class Lock extends ReentrantLock {
