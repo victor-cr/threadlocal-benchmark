@@ -12,10 +12,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MyThreadLocal<T> {
     private static AtomicInteger nextHashCode = new AtomicInteger();
     private static final int HASH_INCREMENT = 0x61c88647;
-    private static final int LOCKS_COUNT = 15; // !!!! ^2
+    private static final int BLOCK_BITS = 5;
+    private static final int BLOCK_SIZE = 1 << (BLOCK_BITS - 1);
+    private static final int BLOCK_MASK = BLOCK_SIZE - 1;
     private final int threadLocalHashCode = nextHashCode();
-    private int size = 0;
-    volatile Entry[] storage = new Entry[16];
+    private volatile int blocks = 1;
+    volatile Object[] storage = new Object[BLOCK_SIZE + 1];
 
     /**
      * Returns the next hash code.
@@ -79,33 +81,50 @@ public class MyThreadLocal<T> {
     }
 
     synchronized
-    WeakEntry remember(Object v) {
-//        return new WeakEntry(null);
-        Entry[] tab = storage;
-        int len = tab.length;
+    private void extend(int page) {
+        Object[] list = storage;
+        int len = blocks;
 
-        int mask = len - 1;
-        int i = (int) (MyThread.currentThread().getId() & mask);
-        Entry e;
+        if (len < page) {
+            for (; page != 0; page--) {
+                list = (Object[]) list[BLOCK_SIZE];
 
-        while (tab[i] != null) {
-            i = (i + 1) & mask;
+                if (list[BLOCK_SIZE] == null) {
+                    list[BLOCK_SIZE] = new Object[BLOCK_SIZE + 1];
+                }
+            }
         }
-
-        tab[i] = (e = new Entry(this, v, i));
-
-        if (++size == len) {
-            storage = new Entry[len << 1];
-            System.arraycopy(tab, 0, storage, 0, len);
-        }
-
-        return new WeakEntry(e);
     }
 
-    synchronized
+    WeakEntry remember(Object v) {
+        Object[] list = storage;
+        int i = MyThread.currentThread().index;
+        int len = blocks;
+        int page = i >>> BLOCK_BITS;
+        int offset = i & BLOCK_MASK;
+
+        if (len < page) {
+            extend(page);
+        }
+
+        for (; page != 0; page--) {
+            list = (Object[]) list[BLOCK_SIZE];
+        }
+
+        return new WeakEntry(list[offset] = new Entry(this, v));
+    }
+
     private void forget(Entry e) {
-        storage[e.i] = null;
-        size--;
+        Object[] list = storage;
+        int i = MyThread.currentThread().index;
+        int page = i >>> BLOCK_BITS;
+        int offset = i & BLOCK_MASK;
+
+        for (; page != 0; page--) {
+            list = (Object[]) list[BLOCK_SIZE];
+        }
+
+        list[offset] = null;
     }
 
     private int index(int len) {
@@ -113,23 +132,21 @@ public class MyThreadLocal<T> {
     }
 
     static class Entry {
-        final int i;
         final MyThreadLocal key;
         /**
          * The value associated with this ThreadLocal.
          */
         Object value;
 
-        Entry(MyThreadLocal k, Object v, int i) {
-            this.i = i;
+        Entry(MyThreadLocal k, Object v) {
             this.key = k;
             this.value = v;
         }
     }
 
     private static class WeakEntry extends WeakReference<Entry> {
-        private WeakEntry(Entry referent) {
-            super(referent);
+        private WeakEntry(Object referent) {
+            super((Entry) referent);
         }
     }
 

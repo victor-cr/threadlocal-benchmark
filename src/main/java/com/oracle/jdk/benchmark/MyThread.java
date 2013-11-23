@@ -7,7 +7,9 @@ package com.oracle.jdk.benchmark;
  * @since 27.10.13 6:31
  */
 public class MyThread extends Thread {
+    private static final Numerator numerator = new Numerator();
     MyThreadLocal.ThreadLocalMap myThreadLocals;
+    int index;
 
     public MyThread() {
     }
@@ -44,14 +46,60 @@ public class MyThread extends Thread {
         return (MyThread) Thread.currentThread();
     }
 
-//    @Override
-//    public synchronized void start() {
-//        try {
-//            super.start();
-//        } finally {
-//            if (threadLocals != null) {
-//                threadLocals.clean();
-//            }
-//        }
-//    }
+    private static synchronized void setIndex(MyThread thread) {
+        thread.index = numerator.pop();
+    }
+
+    private static synchronized void retireIndex(MyThread thread) {
+        numerator.push(thread.index);
+    }
+
+    @Override
+    public synchronized void start() {
+        setIndex(this);
+
+        try {
+            super.start();
+        } finally {
+            retireIndex(this);
+        }
+    }
+
+    private final static class Numerator {
+        private final Node root = new Node();
+        private int counter = 0;
+
+        private void push(int index) {
+            Node r = root;
+            Node n = r.next;
+            r.next = new Node(index, n);
+        }
+
+        private int pop() {
+            Node r = root;
+            Node n = r.next;
+
+            if (r == n) {
+                return ++counter;
+            } else {
+                r.next = n.next;
+                return n.index;
+            }
+        }
+    }
+
+    private final static class Node {
+        final int index;
+        Node next = this;
+
+        private Node() {
+            this.index = 0;
+            this.next = this;
+        }
+
+        private Node(int index, Node next) {
+            this.index = index;
+            this.next = next;
+        }
+    }
 }

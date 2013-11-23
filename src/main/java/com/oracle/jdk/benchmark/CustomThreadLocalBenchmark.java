@@ -27,12 +27,10 @@ package com.oracle.jdk.benchmark;
 
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.GenerateMicroBenchmark;
-import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 
 import java.util.concurrent.TimeUnit;
 
@@ -56,12 +54,12 @@ public class CustomThreadLocalBenchmark {
         }
     };
 
-    @GenerateMicroBenchmark
-    public Object customARemember(TestMyThreadLocal custom) {
-        return custom.remember(INSTANCE);
-    }
-
 //    @GenerateMicroBenchmark
+//    public Object customARemember(TestMyThreadLocal custom) {
+//        return custom.remember(INSTANCE);
+//    }
+
+    @GenerateMicroBenchmark
     public Object customGet() {
         return custom.get();
     }
@@ -72,13 +70,13 @@ public class CustomThreadLocalBenchmark {
         return custom.get();
     }
 
-//    @GenerateMicroBenchmark
+    @GenerateMicroBenchmark
     public Object customGetGet() {
         custom.get();
         return custom.get();
     }
 
-//    @GenerateMicroBenchmark
+    @GenerateMicroBenchmark
     public void customSet() {
         custom.set(INSTANCE);
     }
@@ -89,13 +87,13 @@ public class CustomThreadLocalBenchmark {
         custom.set(INSTANCE);
     }
 
-//    @GenerateMicroBenchmark
+    @GenerateMicroBenchmark
     public void customGetSet() {
         custom.get();
         custom.set(INSTANCE);
     }
 
-//    @GenerateMicroBenchmark
+    @GenerateMicroBenchmark
     public void customRemove() {
         custom.remove();
     }
@@ -163,18 +161,18 @@ public class CustomThreadLocalBenchmark {
         original.remove();
     }
 
-    @State(Scope.Benchmark)
-    public static class TestMyThreadLocal extends MyThreadLocal<Object> {
-        @Override
-        protected Object initialValue() {
-            return INSTANCE;
-        }
-
-        @TearDown(Level.Iteration)
-        public void cleanup() {
-            for (int i = 0; i < storage.length; i++) {
-                storage[i] = null;
-            }
-        }
-    }
+//    @State(Scope.Benchmark)
+//    public static class TestMyThreadLocal extends MyThreadLocal<Object> {
+//        @Override
+//        protected Object initialValue() {
+//            return INSTANCE;
+//        }
+//
+//        @TearDown(Level.Iteration)
+//        public void cleanup() {
+//            for (int i = 0; i < storage.length; i++) {
+//                storage[i] = null;
+//            }
+//        }
+//    }
 }
