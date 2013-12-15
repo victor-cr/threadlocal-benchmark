@@ -7,7 +7,7 @@ package com.oracle.jdk.benchmark;
  * @since 27.10.13 6:31
  */
 public class MyThread extends Thread {
-    private static final Numerator numerator = new Numerator();
+    private static final Numerator NUMERATOR = new Numerator();
     MyThreadLocal.ThreadLocalMap myThreadLocals;
     int index;
 
@@ -46,28 +46,36 @@ public class MyThread extends Thread {
         return (MyThread) Thread.currentThread();
     }
 
-    private static synchronized void setIndex(MyThread thread) {
-        thread.index = numerator.pop();
+    synchronized
+    private static void setIndex(MyThread thread) {
+        thread.index = NUMERATOR.pop();
+
+        System.out.println("# Start thread: " + thread + ", index: " + thread.index);
     }
 
-    private static synchronized void retireIndex(MyThread thread) {
-        numerator.push(thread.index);
+    synchronized
+    private static void retireIndex(MyThread thread) {
+        NUMERATOR.push(thread.index);
+        System.out.println("# Stop thread: " + thread + ", index: " + thread.index);
         thread.index = 0;
     }
 
     @Override
-    public synchronized void start() {
+    public void start() {
         setIndex(this);
 
-        try {
-            super.start();
-        } finally { //FIXME: Finally block may be ignored in some corner cases. Probably, it is better to schedule the code at GC event.
-            if (myThreadLocals != null) {
-                myThreadLocals.cleanup(index);
-            }
+        super.start();
+    }
 
-            retireIndex(this);
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+
+        if (myThreadLocals != null) {
+            myThreadLocals.cleanup(index);
         }
+
+        retireIndex(this);
     }
 
     private final static class Numerator {
@@ -95,7 +103,7 @@ public class MyThread extends Thread {
 
     private final static class Node {
         final int index;
-        Node next = this;
+        Node next;
 
         private Node() {
             this.index = 0;

@@ -1,6 +1,8 @@
 package com.oracle.jdk.benchmark;
 
 import java.lang.ref.WeakReference;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -17,7 +19,7 @@ public class MyThreadLocal<T> {
     private static final int BLOCK_MASK = BLOCK_SIZE - 1;
     private final int threadLocalHashCode = nextHashCode();
     private volatile int blocks = 0;
-    volatile Holder[] storage = null; //new Holder[BLOCK_SIZE + 1];
+    volatile List<Holder[]> storage = new LinkedList<>(); //new Holder[BLOCK_SIZE + 1];
 
     /**
      * Returns the next hash code.
@@ -81,62 +83,55 @@ public class MyThreadLocal<T> {
     }
 
     synchronized
-    private void extend(int page) {
-        int len = blocks;
+    private List<Holder[]> extend(int page) {
+        for (; blocks <= page; blocks++) {
+            Holder[] list = new Holder[BLOCK_SIZE];
 
-        if (len < page) {
-            Holder[] list = storage;
-
-            for (; page != 0; page--) {
-                list = list[BLOCK_SIZE].next;
-
-                if (list[BLOCK_SIZE] == null) {
-                    list[BLOCK_SIZE] = new Holder(BLOCK_SIZE + 1);
-                    blocks++;
-                }
-            }
+            storage.add(list);
         }
+
+        return storage;
     }
 
     WeakEntry remember(Object v) {
-        Holder[] list = storage;
+        List<Holder[]> list = storage;
         MyThread t = MyThread.currentThread();
         int i = t.index;
         int len = blocks;
-        int page = i >>> BLOCK_BITS;
+        int page = i >> BLOCK_BITS;
         int offset = i & BLOCK_MASK;
 
-        if (len < page) {
-            extend(page);
+        if (len <= page) {
+            list = extend(page);
         }
 
-        for (; page != 0; page--) {
-            list = list[BLOCK_SIZE].next;
-        }
+        Holder[] data = list.get(page);
 
-        Holder holder = list[offset];
-        WeakReference<MyThread> ref = holder.ref;
+        Holder holder = data[offset];
 
-        if (ref == null || ref.get() != t) {
-            holder.ref = new WeakReference<>(t);
-            holder.entry = new Entry(this, v);
+        if (holder == null) {
+            data[offset] = holder = new Holder(t, new Entry(this, v));
+        } else {
+            WeakReference<MyThread> ref = holder.ref;
+
+            if (ref == null || ref.get() != t) {
+                holder.ref = new WeakReference<>(t);
+                holder.entry = new Entry(this, v);
+            }
         }
 
         return new WeakEntry(holder.entry);
     }
 
     private void forget(Entry e) {
-        Holder[] list = storage;
         int i = MyThread.currentThread().index;
         int page = i >>> BLOCK_BITS;
         int offset = i & BLOCK_MASK;
 
-        for (; page != 0; page--) {
-            list = list[BLOCK_SIZE].next;
-        }
+        Holder holder = storage.get(page)[offset];
 
-        list[offset].ref = null;
-        list[offset].entry = null;
+        holder.ref = null;
+        holder.entry = null;
     }
 
     private int index(int len) {
@@ -157,29 +152,18 @@ public class MyThreadLocal<T> {
     }
 
     private static class Holder {
-        private final Holder[] next;
         private WeakReference<MyThread> ref;
         private Entry entry;
 
-        private Holder(int size) {
-            int fillTo = size - 1;
-            next = new Holder[size];
-
-            for (int i = 0; i < fillTo; i++) {
-                next[i] = new Holder(null, null);
-            }
-        }
-
         private Holder(MyThread thread, Entry e) {
-            entry = e;
-            next = null;
             ref = new WeakReference<>(thread);
+            entry = e;
         }
     }
 
     private static class WeakEntry extends WeakReference<Entry> {
-        private WeakEntry(Object referent) {
-            super((Entry) referent);
+        private WeakEntry(Entry referent) {
+            super(referent);
         }
     }
 
@@ -417,8 +401,8 @@ public class MyThreadLocal<T> {
          *
          * @param staleSlot index of slot known to have null key
          * @return the index of the next null slot after staleSlot
-         *         (all between staleSlot and this slot will have been checked
-         *         for expunging).
+         * (all between staleSlot and this slot will have been checked
+         * for expunging).
          */
         private int expungeStaleEntry(int staleSlot) {
             WeakEntry[] tab = table;
