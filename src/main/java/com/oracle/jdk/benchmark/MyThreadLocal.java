@@ -20,29 +20,7 @@ public class MyThreadLocal<T> {
     }
 
     public T get() {
-        Holder<T>[][] tab = storage;
-        MyThread t = MyThread.currentThread();
-        int i = t.index;
-        int len = tab.length;
-        int page = i >> BLOCK_BITS;
-        int offset = i & BLOCK_MASK;
-
-        Holder<T>[] holders;
-
-        if (len <= page || (holders = tab[page]) == null) {
-            holders = extend(page);
-        }
-
-        Holder<T> holder = holders[offset];
-
-        if (holder == null) {
-            holder = holders[offset] = new Holder<>(t, initialValue());
-        } else if (holder.ref.get() != t) {
-            holder.ref = new WeakReference<>(t);
-            holder.value = initialValue();
-        }
-
-        return holder.value;
+        return getHolder(null).value;
     }
 
     public void set(final T value) {
@@ -50,30 +28,7 @@ public class MyThreadLocal<T> {
             remove();
         }
 
-        Holder<T>[][] tab = storage;
-        MyThread t = MyThread.currentThread();
-        int i = t.index;
-        int len = tab.length;
-        int page = i >> BLOCK_BITS;
-        int offset = i & BLOCK_MASK;
-
-        Holder<T>[] holders;
-
-        if (len <= page || (holders = tab[page]) == null) {
-            holders = extend(page);
-        }
-
-        Holder<T> holder = holders[offset];
-
-        if (holder == null) {
-            holders[offset] = new Holder<>(t, value);
-        } else {
-            if (holder.ref.get() != t) {
-                holder.ref = new WeakReference<>(t);
-            }
-
-            holder.value = value;
-        }
+        getHolder(value);
     }
 
     public void remove() {
@@ -86,6 +41,7 @@ public class MyThreadLocal<T> {
             return;
         }
 
+        holder.ref.clear();
         holder.value = null;
     }
 
@@ -93,6 +49,35 @@ public class MyThreadLocal<T> {
     @SuppressWarnings("unused")
     T childValue(T parentValue) {
         throw new UnsupportedOperationException();
+    }
+
+    private Holder<T> getHolder(T value) {
+        MyThread t = MyThread.currentThread();
+
+        Holder<T>[][] tab = storage;
+        int i = t.index;
+        int len = tab.length;
+        int page = i >> BLOCK_BITS;
+        int offset = i & BLOCK_MASK;
+
+        Holder<T>[] holders;
+
+        if (len <= page || (holders = tab[page]) == null) {
+            holders = extend(page);
+        }
+
+        Holder<T> holder = holders[offset];
+
+        if (holder == null || holder.ref.get() != t) {
+            if (holder == null) {
+                holder = holders[offset] = new Holder<>();
+            }
+
+            holder.ref = new WeakReference<>(t);
+            holder.value = value == null ? initialValue() : value;
+        }
+
+        return holder;
     }
 
     @SuppressWarnings("unchecked")
@@ -121,10 +106,5 @@ public class MyThreadLocal<T> {
     private static class Holder<V> {
         private WeakReference<MyThread> ref;
         private V value;
-
-        private Holder(MyThread t, V v) {
-            ref = new WeakReference<>(t);
-            value = v;
-        }
     }
 }
