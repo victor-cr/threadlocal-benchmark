@@ -8,8 +8,7 @@ package com.oracle.jdk.benchmark;
  */
 public class MyThread extends Thread {
     private static final Numerator NUMERATOR = new Numerator();
-    MyThreadLocal.ThreadLocalMap myThreadLocals;
-    int index;
+    final int index = nextIndex();
 
     public MyThread() {
     }
@@ -47,23 +46,17 @@ public class MyThread extends Thread {
     }
 
     synchronized
-    private static void setIndex(MyThread thread) {
-        thread.index = NUMERATOR.pop();
-
-        System.out.println("# Start thread: " + thread + ", index: " + thread.index);
+    private static int nextIndex() {
+        return NUMERATOR.pop();
     }
 
     synchronized
-    private static void retireIndex(MyThread thread) {
+    private static void recycleIndex(MyThread thread) {
         NUMERATOR.push(thread.index);
-        System.out.println("# Stop thread: " + thread + ", index: " + thread.index);
-        thread.index = 0;
     }
 
     @Override
     public void start() {
-        setIndex(this);
-
         super.start();
     }
 
@@ -71,11 +64,7 @@ public class MyThread extends Thread {
     protected void finalize() throws Throwable {
         super.finalize();
 
-        if (myThreadLocals != null) {
-            myThreadLocals.cleanup(index);
-        }
-
-        retireIndex(this);
+        recycleIndex(this);
     }
 
     private final static class Numerator {

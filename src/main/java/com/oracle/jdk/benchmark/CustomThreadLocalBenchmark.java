@@ -46,18 +46,12 @@ public class CustomThreadLocalBenchmark {
             return INSTANCE;
         }
     };
-
     private final ThreadLocal<Object> original = new ThreadLocal<Object>(){
         @Override
         protected Object initialValue() {
             return INSTANCE;
         }
     };
-
-//    @GenerateMicroBenchmark
-//    public Object customARemember(TestMyThreadLocal custom) {
-//        return custom.remember(INSTANCE);
-//    }
 
     @GenerateMicroBenchmark
     public Object customGet() {
@@ -160,19 +154,4 @@ public class CustomThreadLocalBenchmark {
         original.remove();
         original.remove();
     }
-
-//    @State(Scope.Benchmark)
-//    public static class TestMyThreadLocal extends MyThreadLocal<Object> {
-//        @Override
-//        protected Object initialValue() {
-//            return INSTANCE;
-//        }
-//
-//        @TearDown(Level.Iteration)
-//        public void cleanup() {
-//            for (int i = 0; i < storage.length; i++) {
-//                storage[i] = null;
-//            }
-//        }
-//    }
 }
