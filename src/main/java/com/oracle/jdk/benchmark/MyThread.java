@@ -51,8 +51,8 @@ public class MyThread extends Thread {
     }
 
     synchronized
-    private static void recycleIndex(MyThread thread) {
-        NUMERATOR.push(thread.index);
+    private static void recycleIndex(int index) {
+        NUMERATOR.push(index);
     }
 
     @Override
@@ -64,7 +64,9 @@ public class MyThread extends Thread {
     protected void finalize() throws Throwable {
         super.finalize();
 
-        recycleIndex(this);
+        recycleIndex(index);
+
+        //TODO: maybe consider to clean up ThreadLocals here.
     }
 
     private final static class Numerator {
