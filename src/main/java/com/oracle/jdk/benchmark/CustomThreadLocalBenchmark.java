@@ -74,20 +74,20 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public Object customGet() {
-        return custom.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object customRemoveGet() {
-        custom.remove();
-        return custom.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object customGetGet(BlackHole hole) {
+    public void customGet(BlackHole hole) {
         hole.consume(custom.get());
-        return custom.get();
+    }
+
+    @GenerateMicroBenchmark
+    public void customRemoveGet(BlackHole hole) {
+        custom.remove();
+        hole.consume(custom.get());
+    }
+
+    @GenerateMicroBenchmark
+    public void customGetGet(BlackHole hole) {
+        hole.consume(custom.get());
+        hole.consume(custom.get());
     }
 
     @GenerateMicroBenchmark
@@ -125,20 +125,20 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public Object originalGet() {
-        return original.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object originalRemoveGet() {
-        original.remove();
-        return original.get();
-    }
-
-    @GenerateMicroBenchmark
-    public Object originalGetGet(BlackHole hole) {
+    public void originalGet(BlackHole hole){
         hole.consume(original.get());
-        return original.get();
+    }
+
+    @GenerateMicroBenchmark
+    public void originalRemoveGet(BlackHole hole) {
+        original.remove();
+        hole.consume(original.get());
+    }
+
+    @GenerateMicroBenchmark
+    public void originalGetGet(BlackHole hole) {
+        hole.consume(original.get());
+        hole.consume(original.get());
     }
 
     @GenerateMicroBenchmark

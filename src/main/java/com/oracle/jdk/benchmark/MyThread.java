@@ -68,7 +68,7 @@ public class MyThread extends Thread {
 
         recycleIndex(index);
 
-        myThreadLocals.forEach((key, v) -> key.remove());
+        myThreadLocals.forEach((key, v) -> key.remove(this));
     }
 
     private final static class Numerator {

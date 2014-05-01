@@ -49,7 +49,15 @@ public class MyThreadLocal<T> {
     }
 
     public void remove() {
-        MyThread t = MyThread.currentThread();
+        remove(MyThread.currentThread());
+    }
+
+    @SuppressWarnings("unused")
+    T childValue(T parentValue) {
+        throw new UnsupportedOperationException();
+    }
+
+    void remove(MyThread t) {
         int i = t.index;
         int page = i >>> BLOCK_BITS;
         Holder[][] tab = storage;
@@ -60,11 +68,6 @@ public class MyThreadLocal<T> {
             holder.ref = null;
             holder.value = null;
         }
-    }
-
-    @SuppressWarnings("unused")
-    T childValue(T parentValue) {
-        throw new UnsupportedOperationException();
     }
 
     private Holder find(MyThread t) {
