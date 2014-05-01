@@ -31,31 +31,47 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.logic.BlackHole;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class CustomThreadLocalBenchmark {
-    private static final Object INSTANCE = new Object();
+    private static final int SIZE = 1 << 10;
+    private static final Object[] INSTANCES = new Object[SIZE];
+    private static final AtomicInteger I = new AtomicInteger(0);
 
-    private final MyThreadLocal<Object> custom = new MyThreadLocal<Object>(){
+    static {
+        for (int i = 0; i < SIZE; i++) {
+            INSTANCES[i] = i % 10 == 0 ? null : new Object();
+        }
+    }
+
+    private final MyThreadLocal<Object> custom = new MyThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
-            return INSTANCE;
+            return instance();
         }
     };
-    private final ThreadLocal<Object> original = new ThreadLocal<Object>(){
+    private final ThreadLocal<Object> original = new ThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
-            return INSTANCE;
+            return instance();
         }
     };
+
+    private static Object instance() {
+        int i = I.accumulateAndGet(1, (left, right) -> (left + right) & (SIZE - 1));
+
+        return INSTANCES[i];
+    }
 
     @GenerateMicroBenchmark
     public Object customGet() {
@@ -69,26 +85,26 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public Object customGetGet() {
-        custom.get();
+    public Object customGetGet(BlackHole hole) {
+        hole.consume(custom.get());
         return custom.get();
     }
 
     @GenerateMicroBenchmark
     public void customSet() {
-        custom.set(INSTANCE);
+        custom.set(instance());
     }
 
     @GenerateMicroBenchmark
     public void customRemoveSet() {
         custom.remove();
-        custom.set(INSTANCE);
+        custom.set(instance());
     }
 
     @GenerateMicroBenchmark
-    public void customGetSet() {
-        custom.get();
-        custom.set(INSTANCE);
+    public void customGetSet(BlackHole hole) {
+        hole.consume(custom.get());
+        custom.set(instance());
     }
 
     @GenerateMicroBenchmark
@@ -97,8 +113,8 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public void customGetRemove() {
-        custom.get();
+    public void customGetRemove(BlackHole hole) {
+        hole.consume(custom.get());
         custom.remove();
     }
 
@@ -120,26 +136,26 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public Object originalGetGet() {
-        original.get();
+    public Object originalGetGet(BlackHole hole) {
+        hole.consume(original.get());
         return original.get();
     }
 
     @GenerateMicroBenchmark
     public void originalSet() {
-        original.set(INSTANCE);
+        original.set(instance());
     }
 
     @GenerateMicroBenchmark
     public void originalRemoveSet() {
         original.remove();
-        original.set(INSTANCE);
+        original.set(instance());
     }
 
     @GenerateMicroBenchmark
-    public void originalGetSet() {
-        original.get();
-        original.set(INSTANCE);
+    public void originalGetSet(BlackHole hole) {
+        hole.consume(original.get());
+        original.set(instance());
     }
 
     @GenerateMicroBenchmark
@@ -148,8 +164,8 @@ public class CustomThreadLocalBenchmark {
     }
 
     @GenerateMicroBenchmark
-    public void originalGetRemove() {
-        original.get();
+    public void originalGetRemove(BlackHole hole) {
+        hole.consume(original.get());
         original.remove();
     }
 

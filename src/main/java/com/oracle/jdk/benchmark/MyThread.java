@@ -1,5 +1,8 @@
 package com.oracle.jdk.benchmark;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 /**
  * JavaDoc here
  *
@@ -9,6 +12,7 @@ package com.oracle.jdk.benchmark;
 public class MyThread extends Thread {
     private static final Numerator NUMERATOR = new Numerator();
     final int index = nextIndex();
+    final Map<MyThreadLocal, Object> myThreadLocals = new WeakHashMap<>();
 
     public MyThread() {
     }
@@ -45,12 +49,10 @@ public class MyThread extends Thread {
         return (MyThread) Thread.currentThread();
     }
 
-    synchronized
     private static int nextIndex() {
         return NUMERATOR.pop();
     }
 
-    synchronized
     private static void recycleIndex(int index) {
         NUMERATOR.push(index);
     }
@@ -66,19 +68,21 @@ public class MyThread extends Thread {
 
         recycleIndex(index);
 
-        //TODO: maybe consider to clean up ThreadLocals here.
+        myThreadLocals.forEach((key, v) -> key.remove());
     }
 
     private final static class Numerator {
         private final Node root = new Node();
         private int counter = 0;
 
+        synchronized
         private void push(int index) {
             Node r = root;
             Node n = r.next;
             r.next = new Node(index, n);
         }
 
+        synchronized
         private int pop() {
             Node r = root;
             Node n = r.next;
