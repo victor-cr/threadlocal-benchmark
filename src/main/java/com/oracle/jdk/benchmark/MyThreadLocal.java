@@ -12,8 +12,10 @@ public class MyThreadLocal<T> {
     private static final int BLOCK_BITS = 5;
     private static final int BLOCK_SIZE = 1 << (BLOCK_BITS - 1);
     private static final int BLOCK_MASK = BLOCK_SIZE - 1;
+
+    private final Object lock = new Object();
     @SuppressWarnings("unchecked")
-    volatile Holder<T>[][] storage = new Holder[0][];
+    private volatile Holder<T>[][] storage = new Holder[0][];
 
     protected T initialValue() {
         return null;
@@ -95,26 +97,27 @@ public class MyThreadLocal<T> {
     }
 
     @SuppressWarnings("unchecked")
-    synchronized
     private Holder<T>[] extend(int page) {
-        Holder<T>[][] tab = storage;
+        synchronized (lock) {
+            Holder<T>[][] tab = storage;
 
-        if (tab.length <= page) {
-            System.out.print("#Extends#");
-            int len = page + 1;
-            Holder<T>[][] newTab = new Holder[len][];
+            if (tab.length <= page) {
+                //System.out.print("#Extends#");
+                int len = page + 1;
+                Holder<T>[][] newTab = new Holder[len][];
 
-            System.arraycopy(tab, 0, newTab, 0, tab.length);
+                System.arraycopy(tab, 0, newTab, 0, tab.length);
 
-            newTab[page] = new Holder[BLOCK_SIZE];
+                newTab[page] = new Holder[BLOCK_SIZE];
 
-            tab = storage = newTab;
-        } else if (tab[page] == null) {
-            System.out.print("#Populates#");
-            tab[page] = new Holder[BLOCK_SIZE];
+                tab = storage = newTab;
+            } else if (tab[page] == null) {
+                //System.out.print("#Populates#");
+                tab[page] = new Holder[BLOCK_SIZE];
+            }
+
+            return tab[page];
         }
-
-        return tab[page];
     }
 
     private static class Holder<V> {
