@@ -11,7 +11,7 @@ import java.util.WeakHashMap;
  */
 public class MyThread extends Thread {
     private static final Numerator NUMERATOR = new Numerator();
-    final int index = nextIndex();
+    private int index = -1;
     final Map<MyThreadLocal, Object> myThreadLocals = new WeakHashMap<>();
 
     public MyThread() {
@@ -49,6 +49,13 @@ public class MyThread extends Thread {
         return (MyThread) Thread.currentThread();
     }
 
+    int index() {
+        if (index == -1) {
+            throw new IllegalStateException("Method can only be invoked for started threads");
+        }
+        return index;
+    }
+
     private static int nextIndex() {
         return NUMERATOR.pop();
     }
@@ -59,6 +66,7 @@ public class MyThread extends Thread {
 
     @Override
     public void start() {
+        this.index = nextIndex();
         super.start();
     }
 

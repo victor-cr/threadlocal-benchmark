@@ -29,7 +29,7 @@
     </dependencies>
 
     <properties>
-        <jmh.version>0.6</jmh.version>
+        <jmh.version>0.7</jmh.version>
         <project.jdk.version>1.8</project.jdk.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
