@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MyThreadExecutorService extends ThreadPoolExecutor implements ExecutorService {
     public MyThreadExecutorService(int poolSize, String prefix) {
-        super(poolSize, poolSize, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new MyThreadFactory(prefix));
+        super(poolSize, poolSize, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new MyThreadFactory(prefix));
     }
 
     private static class MyThreadFactory implements ThreadFactory {
