@@ -41,10 +41,10 @@ public class MyThreadLocal<T> {
 //            UNSAFE = sun.misc.Unsafe.getUnsafe();
 //
 /* Replace it { */
-            Field singleoneInstanceField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
+            Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
 
-            UNSAFE = (sun.misc.Unsafe) singleoneInstanceField.get(null);
+            UNSAFE = (sun.misc.Unsafe) unsafeField.get(null);
 /* } Replace it */
 
             Class<?> arrayClass = Holder[][].class;
