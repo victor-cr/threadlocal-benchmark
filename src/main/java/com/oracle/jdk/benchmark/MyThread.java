@@ -12,7 +12,7 @@ import java.util.WeakHashMap;
 public class MyThread extends Thread {
     private static final Numerator NUMERATOR = new Numerator();
     private int index = -1;
-    final Map<MyThreadLocal, Object> myThreadLocals = new WeakHashMap<>();
+    final Map<MyThreadLocal, Object> myThreadLocals = new WeakHashMap<MyThreadLocal, Object>();
 
     public MyThread() {
     }
@@ -67,6 +67,7 @@ public class MyThread extends Thread {
     @Override
     public void start() {
         this.index = nextIndex();
+        System.out.println("############ THREAD: " + this.index);
         super.start();
     }
 
@@ -76,7 +77,7 @@ public class MyThread extends Thread {
 
         recycleIndex(index);
 
-        myThreadLocals.forEach((key, v) -> key.remove(this));
+        //myThreadLocals.forEach((key, v) -> key.remove(this));
     }
 
     private final static class Numerator {

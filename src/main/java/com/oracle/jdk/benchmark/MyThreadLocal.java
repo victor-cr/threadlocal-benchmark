@@ -3,68 +3,148 @@ package com.oracle.jdk.benchmark;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * JavaDoc here
+ * Operational cases:
+ * <dl compact>
+ * <dt>INIT</dt>
+ * <dd>The table is not yet initialized</dd>
+ * <dt>EMPTY</dt>
+ * <dd>The thread cell in the table is empty. It happened either after {@link #remove()} invocation or
+ * no value has yet been set</dd>
+ * <dt>SET</dt>
+ * <dd>The thread cell is in use by current thread</dd>
+ * <dt>NEED_COLUMN</dt>
+ * <dd>A row in which the thread cell should be allocated are not yet initialized in the table</dd>
+ * <dt>NEED_EXTENSION</dt>
+ * <dd>The table is needed to be extended</dd>
+ * </dl>
  *
  * @author Victor Polischuk
  * @since 27.10.13 6:30
  */
 public class MyThreadLocal<T> {
     private static final int INITIAL_CAPACITY = 1 << 1; //TODO: increase it after tests
-    private static final int BLOCK_BITS = 5;
+    private static final int BLOCK_BITS = 2;
     private static final int BLOCK_SIZE = 1 << (BLOCK_BITS - 1);
     private static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
+    private static final long ADDR_BASE;
+    private static final int ADDR_SHIFT;
+    private static final sun.misc.Unsafe UNSAFE;
 
-    private static final Holder MOVED = new Holder();
+    static {
+        try {
+//            /* Security Error */
+//            UNSAFE = sun.misc.Unsafe.getUnsafe();
+//
+/* Replace it { */
+            Field singleoneInstanceField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            singleoneInstanceField.setAccessible(true);
 
-    private volatile Column[] table;
-    private volatile Column[] nextTable;
-    private AtomicInteger sizeCtl = new AtomicInteger(-1);
+            UNSAFE = (sun.misc.Unsafe) singleoneInstanceField.get(null);
+/* } Replace it */
 
+            Class<?> arrayClass = Holder[][].class;
+
+            ADDR_BASE = UNSAFE.arrayBaseOffset(arrayClass);
+            int scale = UNSAFE.arrayIndexScale(arrayClass);
+
+            if ((scale & (scale - 1)) != 0) {
+                throw new Error("data type scale not a power of two");
+            }
+
+            ADDR_SHIFT = 31 - Integer.numberOfLeadingZeros(scale);
+        } catch (Exception e) {
+            e.printStackTrace(System.out);
+            System.out.println("AAAAAAAAA!!!!");
+            throw new Error(e);
+        }
+    }
+
+    private final ConcurrentArrayList list = new ConcurrentArrayList(INITIAL_CAPACITY);
 
     protected T initialValue() {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked unused")
     public T get() {
         MyThread t = MyThread.currentThread();
-        Column[] tab = table;
 
-        int i = index(t);
-        int c = column(i);
+        int i = t.index();
 
-        Column column = atomicGetOrCreate(tab, c);
+        int r = row(i);
+        int c = cell(i);
 
+        Holder[] row = list.ensure(r);
 
-        Holder holder = find(t);
+        Holder holder = row[c];
 
-        if (holder.ref != null && holder.ref.get() == t) {
+        if (holder != null && holder.ref != null && holder.ref.get() == t) {
             return (T) holder.value;
         }
 
-        t.myThreadLocals.put(this, null);
-        holder.ref = new WeakReference<>(t);
-        return (T) (holder.value = initialValue());
+        //t.myThreadLocals.put(this, null);
+        T v = initialValue();
+
+        row[c] = holder = new Holder(t);
+
+        if (v != null) {
+            holder.value = v;
+        }
+
+        return v;
     }
 
+    @SuppressWarnings("unused")
     public void set(T value) {
         MyThread t = MyThread.currentThread();
 
-        Holder holder = find(t);
+        int i = t.index();
 
-        if (holder.ref == null || holder.ref.get() != t) {
-            holder.ref = new WeakReference<>(t);
-            t.myThreadLocals.put(this, null);
+        int r = row(i);
+        int c = cell(i);
+
+        Holder[] row = list.ensure(r);
+
+        Holder holder = row[c];
+
+        if (holder == null) {
+
+        } else if (holder.ref != null && holder.ref.get() == t) {
+            if (holder.value != value) {
+                holder.value = value;
+            }
+            return;
         }
 
-        holder.value = value;
+        //t.myThreadLocals.put(this, null);
+
+        row[c] = holder = new Holder(t);
+
+        if (value != null) {
+            holder.value = value;
+        }
     }
 
+    @SuppressWarnings("unused")
     public void remove() {
-        remove(MyThread.currentThread());
+        MyThread t = MyThread.currentThread();
+
+        int i = t.index();
+
+        int r = row(i);
+        int c = cell(i);
+
+        Holder[] row = list.get(r);
+
+        if (row != null && row[c] != null) {
+//            t.myThreadLocals.remove(this);
+            row[c] = null;
+        }
     }
 
     @SuppressWarnings("unused")
@@ -72,337 +152,224 @@ public class MyThreadLocal<T> {
         throw new UnsupportedOperationException();
     }
 
-    void remove(MyThread t) {
-        Holder[] tab = table;
-        int i = t.index();
-        Holder holder;
-
-        if (tab != null && tab.length > i && (holder = atomicGet(tab, i)) != null && holder.ref != null) {
-            t.myThreadLocals.remove(this);
-            holder.ref = null;
-            holder.value = null;
-        }
+    private static int row(int index) {
+        return index >>> (BLOCK_BITS - 1);
     }
 
-    private Holder[] getSegment(int index) {
-
+    private static int cell(int index) {
+        return index & BLOCK_MASK;
     }
 
-    private Holder find(MyThread t) {
-        int i = t.index();
+    private static class Table {
+        private final int length;
+        private final Holder[][] rows;
 
-        for (Holder[][] tab = table; ; ) {
-            Holder holder;
-
-            if (tab == null) {
-                tab = initTable(i);
-            } else if (i >= tab.length) {
-                tab = extend(i);
-            } else if ((holder = atomicGet(tab, i)) == null) {
-                if (atomicSet(tab, i, holder = new Holder())) {
-                    return holder;
-                }
-            } else if (holder == MOVED) {
-                Holder[] nextTab = nextTable;
-
-                if (nextTab != null) {
-                    holder = atomicGet(nextTab, i);
-
-                    if (holder != MOVED && (holder != null || atomicSet(nextTab, i, holder = new Holder()))) {
-                        return holder;
-                    }
-                }
-
-                tab = table;
-            } else {
-                return holder;
-            }
-        }
-    }
-
-    private Holder[] extend(int index) {
-        Holder[] tab = table;
-        Holder[] nextTab;
-
-        while (tab.length <= index) {
-            while ((nextTab = nextTable) == null) {
-                if (sizeCtl.get() >= 0) {
-                    Thread.yield(); // lost initialization race; just spin
-                } else if (sizeCtl.compareAndSet(-1, 0)) {
-                    if ((nextTab = nextTable) == null) {
-                        int n = newLength(index + 1);
-
-                        if (n < 0) {
-                            n = Integer.MAX_VALUE;
-                        }
-
-                        nextTable = nextTab = new Holder[n];
-                    }
-                    break;
-                }
-            }
-
-            try {
-                transfer(tab, nextTab, 0);
-            } finally {
-                sizeCtl.set(-1);
-            }
-
-            table = tab = nextTab;
-            nextTable = null;
+        private Table(int length) {
+            this.length = length;
+            this.rows = new Holder[length][];
         }
 
-        return null;
-    }
-
-    private void transfer(Holder[] tab, Holder[] nextTab, int index) {
-        int len = tab.length;
-
-        while (index < len) {
-            Holder holder = atomicGet(tab, index);
-
-            if (holder == MOVED) {
-                index++;
-            } else if (atomicMark(tab, index, holder)) {
-                sizeCtl.incrementAndGet();
-
-                if (holder != null) {
-                    atomicSet(nextTab, index, holder); // ignore write error
-                }
-
-                index++;
-            }
+        private Holder[] get(int i) {
+//            return rows[i];
+            return atomicGet(rows, i);
         }
-    }
 
-    private Holder[] initTable(int len) {
-        Holder[] tab;
+        private Holder[] create(int i) {
+//            Row[] tab = rows;
+//            Row row;
+//
+//            if (tab[i] == null) {
+//                row = tab[i] = new Row(length);
+//            } else {
+//                row = tab[i];
+//            }
+//            return row;
 
-        while ((tab = table) == null) {
-            if (sizeCtl.get() >= 0) {
-                Thread.yield(); // lost initialization race; just spin
-            } else if (sizeCtl.compareAndSet(-1, 0)) {
-                try {
-                    if ((tab = table) == null) {
-                        int n = len < INITIAL_CAPACITY ? newLength(len) : INITIAL_CAPACITY;
-                        table = tab = new Holder[n];
-                    }
-                } finally {
-                    sizeCtl.set(-1);
-                }
-                break;
+            Holder[] r = new Holder[BLOCK_SIZE];
+
+            if (atomicSet(rows, i, r)) {
+                return r;
+            }
+
+            return atomicGet(rows, i);
+        }
+
+        private void copy(Holder[] r, int i) {
+            if (rows[i] == null) {
+                atomicSet(rows, i, r);
             }
         }
 
-        return tab;
-    }
+        private static Holder[] atomicGet(Holder[][] a, int i) {
+            return (Holder[]) UNSAFE.getObjectVolatile(a, address(i));
+        }
 
-    private static int index(MyThread t) {
-        return t.index();
-    }
+        private static boolean atomicSet(Holder[][] a, int i, Holder[] value) {
+            return UNSAFE.compareAndSwapObject(a, address(i), null, value);
+        }
 
-    private static int column(int index) {
-        return index >>> BLOCK_BITS;
-    }
-
-    private static int newLength(int requiredLength) {
-        return 1 << (32 - Integer.numberOfLeadingZeros(requiredLength));
-    }
-
-    private static class Column {
-        private final Holder[] holders;
-
-        private Column(Holder[] holders) {
-            this.holders = holders;
+        private static long address(int i) {
+            return ((long) i << ADDR_SHIFT) + ADDR_BASE;
         }
     }
 
     private static class Holder {
-        private WeakReference<MyThread> ref;
+        private final WeakReference<MyThread> ref;
         private Object value;
+
+        private Holder(MyThread t) {
+            this.ref = new WeakReference<MyThread>(t);
+        }
     }
 
     private static class ConcurrentArrayList {
-        private static final long ADDR_ABASE;
-        private static final int ASHIFT;
-        private static final sun.misc.Unsafe UNSAFE;
-
-        static {
-            try {
-//            /* Security Error */
-//            UNSAFE = sun.misc.Unsafe.getUnsafe();
-//
-/* Replace it { */
-                Field singleoneInstanceField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-                singleoneInstanceField.setAccessible(true);
-
-                UNSAFE = (sun.misc.Unsafe) singleoneInstanceField.get(null);
-/* } Replace it */
-
-                Class<?> arrayClass = Column[].class;
-
-                ADDR_ABASE = UNSAFE.arrayBaseOffset(arrayClass);
-                int scale = UNSAFE.arrayIndexScale(arrayClass);
-
-                if ((scale & (scale - 1)) != 0) {
-                    throw new Error("data type scale not a power of two");
-                }
-
-                ASHIFT = newLength(scale) - 1;
-            } catch (Exception e) {
-                e.printStackTrace(System.out);
-                System.out.println("AAAAAAAAA!!!!");
-                throw new Error(e);
-            }
-        }
-
-        private int initialSize;
-        private Column[] list;
-        private Column[] prototype;
-        private AtomicInteger sizeCtl;
+        private final int initialSize;
+        private final AtomicInteger control;
+        private final Lock lock = new ReentrantLock();
+        private volatile Table table;
+        private volatile Table prototype;
 
         private ConcurrentArrayList(int initialSize) {
-            this.initialSize = initialSize;
-            this.list = null;
+            this.table = null;
             this.prototype = null;
-            this.sizeCtl = new AtomicInteger(-1);
+            this.initialSize = initialSize;
+            this.control = new AtomicInteger();
         }
 
-        private Column get(int i) {
-            for (Column[] tab = list; ; ) {
-                Holder holder;
+        private Holder[] get(int i) {
+            Table tab = table;
 
-                if (tab == null) {
-                    tab = init(i);
-                } else if (i >= tab.length) {
-                    tab = extend(i);
-                } else if ((holder = atomicGet(tab, i)) == null) {
-                    if (atomicSet(tab, i, holder = new Holder())) {
-                        return holder;
-                    }
-                } else if (holder == MOVED) {
-                    Holder[] nextTab = nextTable;
-
-                    if (nextTab != null) {
-                        holder = atomicGet(nextTab, i);
-
-                        if (holder != MOVED && (holder != null || atomicSet(nextTab, i, holder = new Holder()))) {
-                            return holder;
-                        }
-                    }
-
-                    tab = table;
-                } else {
-                    return holder;
-                }
-            }
-        }
-
-        private Column ensure(int i) {
-
-        }
-
-        private Column[] extend(int index) {
-            Column[] tab = list;
-            Column[] nextTab;
-
-            while (tab.length <= index) {
-                while ((nextTab = prototype) == null) {
-                    if (sizeCtl.get() >= 0) {
-                        Thread.yield(); // lost initialization race; just spin
-                    } else if (sizeCtl.compareAndSet(-1, 0)) {
-                        if ((nextTab = prototype) == null) {
-                            int n = newLength(index + 1);
-
-                            if (n < 0) {
-                                n = Integer.MAX_VALUE;
-                            }
-
-                            prototype = nextTab = new Column[n];
-                        }
-                        break;
-                    }
-                }
-
-                try {
-                    transfer(tab, nextTab, 0);
-                } finally {
-                    sizeCtl.set(-1);
-                }
-
-                list = tab = nextTab;
-                prototype = null;
+            if (tab != null && i < tab.length) {
+                return tab.get(i);
             }
 
             return null;
         }
 
-        private void transfer(Holder[] tab, Holder[] nextTab, int index) {
-            int len = tab.length;
+        private Holder[] ensure(int i) {
+            Table tab = table;
+            Holder[] row;
 
-            while (index < len) {
-                Holder holder = atomicGet(tab, index);
+            int reqLen = i + 1;
 
-                if (holder == MOVED) {
-                    index++;
-                } else if (atomicMark(tab, index, holder)) {
-                    sizeCtl.incrementAndGet();
-
-                    if (holder != null) {
-                        atomicSet(nextTab, index, holder); // ignore write error
-                    }
-
-                    index++;
-                }
+            if (tab == null) {
+                tab = init(reqLen);
+                row = tab.create(i);
+            } else if (tab.length < reqLen) {
+                tab = extendTo(reqLen);
+                row = tab.create(i);
+            } else if ((row = tab.get(i)) == null) {
+                row = tab.create(i);
             }
+
+            Table newTab = prototype;
+
+            if (newTab != tab) {
+                newTab.copy(row, i);
+            }
+
+            return row;
         }
 
-        private Column[] init(int len) {
-            Column[] tab;
+        private Table init(int reqLen) {
+            /*
+            Table tab = table;
 
-            while ((tab = list) == null) {
-                if (sizeCtl.get() >= 0) {
-                    Thread.yield(); // lost initialization race; just spin
-                } else if (sizeCtl.compareAndSet(-1, 0)) {
+            for (; tab == null; tab = table) {
+                if (control.get() != 0) {
+                    Thread.yield(); // lost initialization race; yield
+                } else if (control.compareAndSet(0, 1)) {
                     try {
-                        if ((tab = list) == null) {
-                            int n = len < initialSize ? newLength(len) : initialSize;
-                            list = tab = new Column[n];
+                        if (table == null) {
+                            int size = reqLen < initialSize ? newLength(reqLen) : initialSize;
+
+                            prototype = table = new Table(size);
                         }
                     } finally {
-                        sizeCtl.set(-1);
+                        control.set(0);
                     }
-                    break;
+                }
+            }
+            */
+            Table tab;
+
+            while ((tab = table) == null) {
+                if (lock.tryLock()) {
+                    try {
+                        if (table == null) {
+                            int len = reqLen > initialSize ? newLength(reqLen) : initialSize;
+
+                            System.out.println("# !!!!!!!!!!!!!!!!!!!!!! init " + len + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!#");
+
+                            prototype = table = new Table(len);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    Thread.yield();
                 }
             }
 
             return tab;
         }
 
-        private static Column atomicGet(Column[] tab, int index) {
-            return (Column) UNSAFE.getObjectVolatile(tab, addr(index));
-        }
+        private Table extendTo(int reqLen) {
+            while (prototype.length < reqLen) {
+                if (lock.tryLock()) {
+                    try {
+                        if (prototype.length < reqLen) {
+                            int len = newLength(reqLen);
 
-        private static Column atomicGetOrCreate(Column[] tab, int index) {
-            Column column = atomicGet(tab, index);
+                            System.out.println("# !!!!!!!!!!!!!!!!!!!!!! extendTo " + len + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!#");
 
-            if (column == null) {
-                column = new Column(new Holder[BLOCK_SIZE]);
-
-                while (!atomicSet(tab, index, column)) ;
-
-                column = atomicGet(tab, index);
+                            prototype = new Table(len);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    Thread.yield();
+                }
             }
 
-            return column;
+            /*
+            while (prototype.length < reqLen) {
+                if (control.get() != 0) {
+                    Thread.yield(); // lost initialization race; yield
+                } else if (control.compareAndSet(0, 1)) {
+                    try {
+                        if (prototype.length < reqLen) {
+                            int size = newLength(reqLen);
+
+                            prototype = new Table(size);
+                        }
+                    } finally {
+                        control.set(0);
+                    }
+                }
+            }
+              */
+            Table tab;
+
+            do {
+                tab = prototype;
+                int len = tab.length;
+
+                for (int j = 0; j < len && tab == prototype && tab != table; j++) {
+                    Holder[] r = table.get(j);
+
+                    tab.copy(r, j);
+                }
+            } while (tab != prototype);
+
+            table = tab;
+
+            return tab;
         }
 
-        private static boolean atomicSet(Column[] tab, int index, Column value) {
-            return UNSAFE.compareAndSwapObject(tab, addr(index), null, value);
-        }
-
-        private static long addr(int index) {
-            return ((long) index << ASHIFT) + ADDR_ABASE;
+        private static int newLength(int reqLen) {
+            return 1 << (32 - Integer.numberOfLeadingZeros(reqLen - 1));
         }
     }
 }

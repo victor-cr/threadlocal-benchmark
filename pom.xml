@@ -29,8 +29,8 @@
     </dependencies>
 
     <properties>
-        <jmh.version>0.8</jmh.version>
-        <project.jdk.version>1.8</project.jdk.version>
+        <jmh.version>0.9.5</jmh.version>
+        <project.jdk.version>1.6</project.jdk.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

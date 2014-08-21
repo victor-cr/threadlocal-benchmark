@@ -25,14 +25,14 @@
 
 package com.oracle.jdk.benchmark;
 
+import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
-import org.openjdk.jmh.annotations.GenerateMicroBenchmark;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.logic.BlackHole;
+import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -70,7 +70,7 @@ public class CustomThreadLocalBenchmark {
         private ThreadLocal<Object> original;
 
         @Setup
-        public void setup(Instances i) {
+        public void setup(final Instances i) {
             custom = new MyThreadLocal<Object>() {
                 @Override
                 protected Object initialValue() {
@@ -86,103 +86,103 @@ public class CustomThreadLocalBenchmark {
         }
     }
 
-    @GenerateMicroBenchmark
-    public void customGet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void customGet(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.custom.get());
     }
 
-    @GenerateMicroBenchmark
-    public void customRemoveGet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void customRemoveGet(TLS tls, Instances is, Blackhole hole) {
         tls.custom.remove();
         hole.consume(tls.custom.get());
     }
 
-    @GenerateMicroBenchmark
-    public void customGetGet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void customGetGet(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.custom.get());
         hole.consume(tls.custom.get());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void customSet(TLS tls, Instances is) {
         tls.custom.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void customRemoveSet(TLS tls, Instances is) {
         tls.custom.remove();
         tls.custom.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
-    public void customGetSet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void customGetSet(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.custom.get());
         tls.custom.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void customRemove(TLS tls, Instances is) {
         tls.custom.remove();
     }
 
-    @GenerateMicroBenchmark
-    public void customGetRemove(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void customGetRemove(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.custom.get());
         tls.custom.remove();
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void customRemoveRemove(TLS tls, Instances is) {
         tls.custom.remove();
         tls.custom.remove();
     }
 
-    @GenerateMicroBenchmark
-    public void originalGet(TLS tls, Instances is, BlackHole hole){
+    @Benchmark
+    public void originalGet(TLS tls, Instances is, Blackhole hole){
         hole.consume(tls.original.get());
     }
 
-    @GenerateMicroBenchmark
-    public void originalRemoveGet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void originalRemoveGet(TLS tls, Instances is, Blackhole hole) {
         tls.original.remove();
         hole.consume(tls.original.get());
     }
 
-    @GenerateMicroBenchmark
-    public void originalGetGet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void originalGetGet(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.original.get());
         hole.consume(tls.original.get());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void originalSet(TLS tls, Instances is) {
         tls.original.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void originalRemoveSet(TLS tls, Instances is) {
         tls.original.remove();
         tls.original.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
-    public void originalGetSet(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void originalGetSet(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.original.get());
         tls.original.set(is.instance());
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void originalRemove(TLS tls, Instances is) {
         tls.original.remove();
     }
 
-    @GenerateMicroBenchmark
-    public void originalGetRemove(TLS tls, Instances is, BlackHole hole) {
+    @Benchmark
+    public void originalGetRemove(TLS tls, Instances is, Blackhole hole) {
         hole.consume(tls.original.get());
         tls.original.remove();
     }
 
-    @GenerateMicroBenchmark
+    @Benchmark
     public void originalRemoveRemove(TLS tls, Instances is) {
         tls.original.remove();
         tls.original.remove();
@@ -191,10 +191,10 @@ public class CustomThreadLocalBenchmark {
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
                 .include(".*" + CustomThreadLocalBenchmark.class.getSimpleName() + ".*")
-                .warmupIterations(15)
-                .measurementIterations(15)
-                .threads(5)
-                .forks(5)
+                .warmupIterations(5)
+                .measurementIterations(5)
+                .threads(6)
+                .forks(1)
                 .build();
 
         new Runner(opt).run();
