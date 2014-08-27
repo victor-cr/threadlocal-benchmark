@@ -26,8 +26,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 27.10.13 6:30
  */
 public class MyThreadLocal<T> {
-    private static final int INITIAL_CAPACITY = 1 << 1; //TODO: increase it after tests
-    private static final int BLOCK_BITS = 2;
+    private static final int INITIAL_CAPACITY = 1 << 4; //TODO: increase it after tests
+    private static final int BLOCK_BITS = 8;
     private static final int BLOCK_SIZE = 1 << (BLOCK_BITS - 1);
     private static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
@@ -38,7 +38,7 @@ public class MyThreadLocal<T> {
     static {
         try {
 //            /* Security Error */
-//            UNSAFE = sun.misc.Unsafe.getUnsafe();
+//            UNSAFE = sun.misc.Unsafe.getUnsafe();  //TODO: replace when/if integrated
 //
 /* Replace it { */
             Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
