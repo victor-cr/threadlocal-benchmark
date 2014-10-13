@@ -3,8 +3,6 @@ package com.oracle.jdk.benchmark;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Operational cases:
@@ -59,7 +57,6 @@ public class MyThreadLocal<T> {
             ADDR_SHIFT = 31 - Integer.numberOfLeadingZeros(scale);
         } catch (Exception e) {
             e.printStackTrace(System.out);
-            System.out.println("AAAAAAAAA!!!!");
             throw new Error(e);
         }
     }
@@ -83,11 +80,10 @@ public class MyThreadLocal<T> {
 
         Holder holder = row[c];
 
-        if (holder != null && holder.ref != null && holder.ref.get() == t) {
+        if (holder != null && holder.ref.get() == t) {
             return (T) holder.value;
         }
 
-        //t.myThreadLocals.put(this, null);
         T v = initialValue();
 
         row[c] = holder = new Holder(t);
@@ -112,20 +108,11 @@ public class MyThreadLocal<T> {
 
         Holder holder = row[c];
 
-        if (holder == null) {
+        if (holder != null && holder.ref.get() == t) {
+            holder.value = value;
+        } else {
+            row[c] = holder = new Holder(t);
 
-        } else if (holder.ref != null && holder.ref.get() == t) {
-            if (holder.value != value) {
-                holder.value = value;
-            }
-            return;
-        }
-
-        //t.myThreadLocals.put(this, null);
-
-        row[c] = holder = new Holder(t);
-
-        if (value != null) {
             holder.value = value;
         }
     }
@@ -142,7 +129,6 @@ public class MyThreadLocal<T> {
         Holder[] row = list.get(r);
 
         if (row != null && row[c] != null) {
-//            t.myThreadLocals.remove(this);
             row[c] = null;
         }
     }
@@ -218,14 +204,13 @@ public class MyThreadLocal<T> {
         private Object value;
 
         private Holder(MyThread t) {
-            this.ref = new WeakReference<MyThread>(t);
+            this.ref = new WeakReference<>(t);
         }
     }
 
     private static class ConcurrentArrayList {
         private final int initialSize;
         private final AtomicInteger control;
-        private final Lock lock = new ReentrantLock();
         private volatile Table table;
         private volatile Table prototype;
 
@@ -272,42 +257,22 @@ public class MyThreadLocal<T> {
         }
 
         private Table init(int reqLen) {
-            /*
             Table tab = table;
 
-            for (; tab == null; tab = table) {
+            while (tab == null) {
                 if (control.get() != 0) {
                     Thread.yield(); // lost initialization race; yield
+                    tab = table;
                 } else if (control.compareAndSet(0, 1)) {
                     try {
                         if (table == null) {
                             int size = reqLen < initialSize ? newLength(reqLen) : initialSize;
 
-                            prototype = table = new Table(size);
+                            tab = prototype = table = new Table(size);
                         }
                     } finally {
                         control.set(0);
                     }
-                }
-            }
-            */
-            Table tab;
-
-            while ((tab = table) == null) {
-                if (lock.tryLock()) {
-                    try {
-                        if (table == null) {
-                            int len = reqLen > initialSize ? newLength(reqLen) : initialSize;
-
-                            System.out.println("# !!!!!!!!!!!!!!!!!!!!!! init " + len + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!#");
-
-                            prototype = table = new Table(len);
-                        }
-                    } finally {
-                        lock.unlock();
-                    }
-                } else {
-                    Thread.yield();
                 }
             }
 
@@ -315,13 +280,12 @@ public class MyThreadLocal<T> {
         }
 
         private Table extendTo(int reqLen) {
+/*
             while (prototype.length < reqLen) {
                 if (lock.tryLock()) {
                     try {
                         if (prototype.length < reqLen) {
                             int len = newLength(reqLen);
-
-                            System.out.println("# !!!!!!!!!!!!!!!!!!!!!! extendTo " + len + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!#");
 
                             prototype = new Table(len);
                         }
@@ -332,8 +296,8 @@ public class MyThreadLocal<T> {
                     Thread.yield();
                 }
             }
+*/
 
-            /*
             while (prototype.length < reqLen) {
                 if (control.get() != 0) {
                     Thread.yield(); // lost initialization race; yield
@@ -349,7 +313,7 @@ public class MyThreadLocal<T> {
                     }
                 }
             }
-              */
+
             Table tab;
 
             do {

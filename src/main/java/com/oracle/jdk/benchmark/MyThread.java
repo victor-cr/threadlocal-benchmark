@@ -67,7 +67,6 @@ public class MyThread extends Thread {
     @Override
     public void start() {
         this.index = nextIndex();
-        System.out.println("############ THREAD: " + this.index);
         super.start();
     }
 
